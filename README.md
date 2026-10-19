@@ -11,20 +11,23 @@ cursor, showing only the formats those files can actually become. Release over o
 files appear next to the originals. Nothing is uploaded anywhere.
 
 <p align="center">
-  <img src="docs/media/main-ko.png" width="49%" alt="바꿔 in Korean with the format ring open over a PNG, light theme">
-  <img src="docs/media/main-en.png" width="49%" alt="Bakkwo in English, dark theme">
+  <img src="docs/media/main-en.png" width="49%" alt="Bakkwo in English: the ring for a video, with MP3 highlighted and 'Convert to MP3 audio' in the middle">
+  <img src="docs/media/main-ko.png" width="49%" alt="바꿔 in Korean, dark theme: the ring for an MKV with subtitles, '작게' (smaller) highlighted">
 </p>
 
 ## Features
 
 - **Ring menu at the cursor** — a custom-drawn Avalonia control. Keep the mouse held and release over
-  a slice, or drop first and click one.
+  a slice, or drop first and click one. The first ring shows only the 7 most relevant choices for that
+  kind of file (a video gets MP4, MOV, MP3, GIF, "smaller", and SRT if it has subtitles); every slice has
+  a caption ("audio", "smaller", "자막"), the slice under the pointer grows, and the middle explains it
+  ("Convert to MP3 audio"). Everything else is one slice away under **More**.
 - **Route planning** — formats form a graph and converters are its edges. Dijkstra's algorithm finds
   the cheapest chain, so YAML → CSV works via JSON and Markdown → text works via HTML, without a
   converter written for each pair.
 - **Parallel batches** with per-file progress; output names never overwrite anything (`photo (1).webp`).
-- **Shrink without changing format**: pick the file's own format (marked ↻) with a Max size to get
-  `clip (720p).mp4` or a smaller photo. The ring shows popular formats first and pages the rest (More ▸).
+- **Shrink without changing format**: pick the file's own format (captioned "smaller") with a Max size to
+  get `clip (720p).mp4` or a smaller photo.
 - **Image options**: quality, maximum size and grayscale. EXIF rotation is applied automatically.
 - **Word documents**: a built-in DOCX reader and writer (Open XML SDK) keeps headings, lists, tables,
   links, code and pictures, and understands documents from Korean Word. LibreOffice, when installed,
@@ -52,7 +55,7 @@ files appear next to the originals. Nothing is uploaded anywhere.
 | **Archives**: ZIP, TAR, TAR.GZ | each other, extract to a folder; any files or folders → one ZIP |
 | **Video**¹: MP4, MOV (incl. iPhone HEVC), MKV, WebM, AVI, WMV, FLV, MPEG, TS, 3GP, OGV, VOB | each other, animated GIF, any audio format; same format smaller (4K / 1080p / 720p) |
 | **Audio**¹: MP3, M4A, Apple Lossless, AAC, WAV, FLAC, OGG, Opus, AIFF, WMA, AMR | each other |
-| **Subtitles**¹: SRT, WebVTT, ASS/SSA, or the subtitle track inside MKV/MP4/MOV/WebM/TS | SRT, WebVTT, ASS |
+| **Subtitles**¹: SRT, WebVTT, ASS/SSA, or a text subtitle track inside MKV/MP4/MOV/WebM/TS | SRT, WebVTT, ASS (offered only when the video has a text track; picture subtitles can't become text) |
 
 **Subtitles stay with the video.** Converting a video keeps its subtitles where the new format can hold them: text
 subtitles become a switchable track (MP4/MOV, WebM, MKV); picture subtitles from TV, DVD or Blu-ray (DVB, VobSub,

@@ -169,6 +169,13 @@ public sealed partial class FfmpegConverter : ConverterBase
         }
     }
 
+    /// <summary>
+    /// True if the file has a text subtitle track that can be saved as SRT/WebVTT/ASS. Picture subtitles
+    /// (DVB from TV, DVD, Blu-ray) don't count: turning them into text would need OCR.
+    /// </summary>
+    public bool HasTextSubtitles(string path) =>
+        FfprobePath() is null || SubtitleTracks(path).Any(t => TextSubtitleCodecs.Contains(t.Codec));
+
     /// <summary>True if the file has at least one subtitle track (uses ffprobe next to ffmpeg).</summary>
     public bool HasSubtitles(string path)
     {
@@ -224,7 +231,10 @@ public sealed partial class FfmpegConverter : ConverterBase
         var subtitles = step.To.Id is "mp4" or "mov" or "mkv" or "webm" or "ts"
             ? PlanSubtitles(step.To.Id, SubtitleTracks(step.InputPath))
             : SubtitlePlan.None;
-        foreach (var arg in ArgumentsFor(step.To.Id, options, subtitles)) info.ArgumentList.Add(arg);
+        var extractTrack = step.To.Category == Formats.FormatCategory.Subtitle && step.From.Category != Formats.FormatCategory.Subtitle
+            ? TextTrackToExtract(step.InputPath)
+            : 0;
+        foreach (var arg in ArgumentsFor(step.To.Id, options, subtitles, extractTrack)) info.ArgumentList.Add(arg);
         foreach (var arg in new[] { "-progress", "pipe:1", "-nostats", step.OutputPath }) info.ArgumentList.Add(arg);
 
         using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start FFmpeg.");
@@ -285,7 +295,19 @@ public sealed partial class FfmpegConverter : ConverterBase
         progress?.Report(1);
     }
 
-    internal IReadOnlyList<string> ArgumentsFor(string target, ConversionOptions options, SubtitlePlan? subtitles = null)
+    /// <summary>The first text subtitle track, so a picture track listed first doesn't break extraction.</summary>
+    private int TextTrackToExtract(string path)
+    {
+        var tracks = SubtitleTracks(path);
+        if (tracks.Count == 0) return 0; // no ffprobe, or no tracks: FFmpeg's own error is mapped to a clear message
+        var text = tracks.FirstOrDefault(t => TextSubtitleCodecs.Contains(t.Codec));
+        if (text is not null) return text.Number;
+        throw new InvalidOperationException(
+            "This video's subtitles are pictures (TV/DVD/Blu-ray), not text, so they can't be saved as SRT, WebVTT or ASS. " +
+            "Convert the video to MKV to keep them, or to MP4 to burn them into the picture.");
+    }
+
+    internal IReadOnlyList<string> ArgumentsFor(string target, ConversionOptions options, SubtitlePlan? subtitles = null, int extractTrack = 0)
     {
         subtitles ??= SubtitlePlan.None;
         // Quality 100 → CRF 18 (near-lossless), quality 10 → CRF 33 (small).
@@ -332,9 +354,9 @@ public sealed partial class FfmpegConverter : ConverterBase
             "amr" => ["-vn", "-c:a", "libopencore_amrnb", "-ar", "8000", "-ac", "1", "-b:a", "12.2k"],
 
             // ---------------------------------------------------------------- subtitles (first subtitle track)
-            "srt" => ["-map", "0:s:0", "-c:s", "srt"],
-            "vtt" => ["-map", "0:s:0", "-c:s", "webvtt", "-f", "webvtt"],
-            "ass" => ["-map", "0:s:0", "-c:s", "ass"],
+            "srt" => ["-map", $"0:s:{extractTrack}", "-c:s", "srt"],
+            "vtt" => ["-map", $"0:s:{extractTrack}", "-c:s", "webvtt", "-f", "webvtt"],
+            "ass" => ["-map", $"0:s:{extractTrack}", "-c:s", "ass"],
 
             _ => throw new NotSupportedException($"FFmpeg target {target} is not configured."),
         };

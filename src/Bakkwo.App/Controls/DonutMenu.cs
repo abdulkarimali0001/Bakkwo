@@ -6,7 +6,8 @@ using Avalonia.Styling;
 
 namespace Bakkwo.App.Controls;
 
-public sealed record DonutItem(string Id, string Label);
+/// <summary>A slice: <see cref="Label"/> in bold, a small <see cref="Caption"/> under it, and a <see cref="Hint"/> shown in the middle on hover.</summary>
+public sealed record DonutItem(string Id, string Label, string? Caption = null, string? Hint = null, bool Special = false);
 
 /// <summary>
 /// The ring of target formats that opens where you drop files. Drawn by hand: each slice is an
@@ -72,7 +73,7 @@ public sealed class DonutMenu : Control
         }
     }
 
-    public double Diameter => (OuterRadius + 10) * 2;
+    public double Diameter => (OuterRadius + 14) * 2;
 
     protected override Size MeasureOverride(Size availableSize) => new(Diameter, Diameter);
 
@@ -117,8 +118,11 @@ public sealed class DonutMenu : Control
         {
             var sweep = 360.0 / count;
             var gap = count > 1 ? 1.4 : 0;
-            var fontSize = count > 10 ? 11 : 13;
-            var bold = new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold);
+            var fontSize = count > 10 ? 11.5 : count > 8 ? 12.5 : 14;
+            var captionSize = count > 10 ? 9 : 10;
+            var bold = new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.Bold);
+            IBrush special = new SolidColorBrush(Color.FromArgb(dark ? (byte)70 : (byte)36, Accent.R, Accent.G, Accent.B));
+            IBrush caption = new SolidColorBrush(dark ? Color.FromArgb(170, 235, 235, 245) : Color.FromArgb(150, 30, 30, 40));
 
             for (var i = 0; i < count; i++)
             {
@@ -126,12 +130,28 @@ public sealed class DonutMenu : Control
                 var end = Math.Min(-90 + (i + 1) * sweep - gap / 2, start + 359.9);
                 var isHot = i == _highlighted;
 
-                context.DrawGeometry(isHot ? highlight : slice, outline, Slice(center, InnerRadius, OuterRadius, start, end));
+                var item = _items[i];
+                // The slice under the pointer grows a little, so it's obvious what a release will pick.
+                var outer = isHot ? OuterRadius + 8 : OuterRadius;
+                var fill = isHot ? highlight : item.Special ? special : slice;
+                if (item.Special && !isHot) context.DrawGeometry(slice, null, Slice(center, InnerRadius, outer, start, end));
+                context.DrawGeometry(fill, outline, Slice(center, InnerRadius, outer, start, end));
 
-                var label = new FormattedText(_items[i].Label, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+                var label = new FormattedText(item.Label, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
                     bold, fontSize, isHot ? Brushes.White : text);
-                var anchor = PointAt(center, (InnerRadius + OuterRadius) / 2, (start + end) / 2);
-                context.DrawText(label, new Point(anchor.X - label.Width / 2, anchor.Y - label.Height / 2));
+                var anchor = PointAt(center, (InnerRadius + outer) / 2, (start + end) / 2);
+                if (item.Caption is { Length: > 0 } captionText)
+                {
+                    var small = new FormattedText(captionText, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+                        Typeface.Default, captionSize, isHot ? Brushes.White : caption);
+                    var top = anchor.Y - (label.Height + small.Height) / 2;
+                    context.DrawText(label, new Point(anchor.X - label.Width / 2, top));
+                    context.DrawText(small, new Point(anchor.X - small.Width / 2, top + label.Height - 1));
+                }
+                else
+                {
+                    context.DrawText(label, new Point(anchor.X - label.Width / 2, anchor.Y - label.Height / 2));
+                }
             }
         }
 
@@ -140,8 +160,12 @@ public sealed class DonutMenu : Control
         context.DrawEllipse(cancelHot ? new SolidColorBrush(Color.FromArgb(60, 220, 60, 60)) : slice, outline,
             center, InnerRadius - 6, InnerRadius - 6);
 
-        var middle = new FormattedText(cancelHot ? _cancelText : _centerText, CultureInfo.CurrentUICulture,
-            FlowDirection.LeftToRight, Typeface.Default, 11, text)
+        // The middle explains the slice under the pointer ("Convert to MP3 audio"), otherwise shows the file.
+        var hint = _highlighted >= 0 && _highlighted < _items.Count ? _items[_highlighted].Hint : null;
+        var middleText = cancelHot ? _cancelText : hint ?? _centerText;
+        var middle = new FormattedText(middleText, CultureInfo.CurrentUICulture,
+            FlowDirection.LeftToRight, hint is null ? Typeface.Default : new Typeface(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold),
+            11, hint is null ? text : new SolidColorBrush(dark ? Color.FromRgb(0xB8, 0xAD, 0xFF) : Accent))
         {
             MaxTextWidth = (InnerRadius - 10) * 2,
             TextAlignment = TextAlignment.Center,

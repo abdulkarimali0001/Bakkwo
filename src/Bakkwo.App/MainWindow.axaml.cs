@@ -19,12 +19,11 @@ public partial class MainWindow : Window
     private const string MoreId = "__more__";
     private const int SlicesPerPage = 11;
 
-    /// <summary>Formats people pick most, shown on the ring's first page.</summary>
+    /// <summary>Overall popularity, used to order the formats behind "More".</summary>
     private static readonly string[] Popular =
         ["mp4", "mp3", "mov", "gif", "jpg", "png", "pdf", "docx", "webp", "m4a", "wav", "webm", "mkv", "md", "txt",
          "html", "csv", "json", "xlsx", "srt", "zip", "folder"];
 
-    private List<DonutItem> _allItems = [];
     private int _page;
     private readonly Avalonia.Threading.DispatcherTimer _moreTimer = new() { Interval = TimeSpan.FromMilliseconds(550) };
     // Longest side in pixels; applies to images and videos (1920 ≈ 1080p, 1280 ≈ 720p for 16:9).
@@ -216,53 +215,65 @@ public partial class MainWindow : Window
     private void ShowDonut(List<string> files, Point at, bool pinned)
     {
         var formats = files.Select(FormatCatalog.Detect).ToList();
-        var items = new List<DonutItem>();
+        var featured = new List<DonutItem>();
+        var rest = new List<DonutItem>();
 
         if (formats.All(f => f is not null))
         {
             var sources = formats.Select(f => f!).ToList();
             var targets = _engine.Planner.CommonTargets(sources).ToList();
 
-            // Only offer subtitle formats when every video actually has a subtitle track.
+            // Only offer subtitle formats when every video has a text subtitle track (picture ones can't become SRT).
             if (targets.Any(t => t.Category == FormatCategory.Subtitle)
                 && sources.Any(f => f.Category == FormatCategory.Video)
                 && _engine.Registry.Converters.OfType<FfmpegConverter>().FirstOrDefault() is { } ffmpeg
-                && !files.Take(5).All(ffmpeg.HasSubtitles))
+                && !files.Take(5).All(ffmpeg.HasTextSubtitles))
             {
                 targets.RemoveAll(t => t.Category == FormatCategory.Subtitle);
             }
 
             var single = sources.Select(f => f.Id).Distinct().Count() == 1 ? sources[0].Id : null;
-            // Popular formats first (stable, so the rest keep the planner's order); same-format last.
-            targets = targets
-                .Where(f => f.Id != single)
-                .Select((f, i) => (f, i))
-                .OrderBy(x => Array.IndexOf(Popular, x.f.Id) >= 0 ? 0 : 1)
-                .ThenBy(x => Array.IndexOf(Popular, x.f.Id) is var p and >= 0 ? p : x.i)
-                .Select(x => x.f)
-                .ToList();
-            // Same format (shrink/compress) goes on the first page, after the top three.
-            if (single is not null && FormatCatalog.ById(single) is { } self
-                && _engine.Planner.CommonTargets(sources).Any(f => f.Id == single))
+            var picks = Suggested(sources);
+
+            // First ring: up to 7 suggestions for this kind of file, in a fixed, predictable order.
+            foreach (var id in picks)
             {
-                targets.Insert(Math.Min(3, targets.Count), self);
+                if (featured.Count >= MaxSuggestions) break;
+                if (id == single) continue;
+                if (targets.FirstOrDefault(t => t.Id == id) is { } target) featured.Add(Item(target, single));
             }
-            items.AddRange(targets.Select(f => new DonutItem(f.Id,
-                f.IsFolder ? Strings.Extract
-                : f.Id == single ? f.Label + " ↻"   // same format: resize/compress
-                : f.Label)));
+            // "Make it smaller" (same format) is a top choice for photos and videos.
+            if (single is not null && targets.FirstOrDefault(t => t.Id == single) is { } self)
+            {
+                featured.Insert(Math.Min(2, featured.Count), Item(self, single));
+                if (featured.Count > MaxSuggestions) featured.RemoveAt(featured.Count - 1);
+            }
+
+            // Everything else, behind "More", popular formats first.
+            rest.AddRange(targets
+                .Where(t => featured.All(f => f.Id != t.Id))
+                .Select((t, i) => (t, i))
+                .OrderBy(x => Array.IndexOf(Popular, x.t.Id) is var p and >= 0 ? p : 100 + x.i)
+                .Select(x => Item(x.t, single)));
         }
-        if (items.All(i => i.Id != "zip"))
+        if (featured.Concat(rest).All(i => i.Id != "zip"))
         {
-            items.Add(new DonutItem(ZipAllId, files.Count > 1 ? Strings.ZipAll : "ZIP"));
+            rest.Add(new DonutItem(ZipAllId, "ZIP", Strings.CaptionArchive, files.Count > 1 ? Strings.ZipAllHint : Strings.ZipHint));
+        }
+        if (featured.Count == 0)
+        {
+            // Nothing known to suggest (unknown files): show what there is.
+            featured.AddRange(rest.Take(MaxSuggestions));
+            rest.RemoveRange(0, featured.Count);
         }
 
         _pendingFiles = files;
-        _allItems = items;
+        _featured = featured;
+        _rest = rest;
         _page = 0;
         ShowPage();
+
         Donut.CenterText = files.Count == 1 ? Path.GetFileName(files[0].TrimEnd('/', '\\')) : Strings.FilesCount(files.Count);
-        Donut.Highlighted = DonutMenu.NoIndex;
         PlaceDonut(at);
         Donut.IsVisible = true;
 
@@ -274,21 +285,54 @@ public partial class MainWindow : Window
             : pinned ? Strings.ClickFormat : Strings.ReleaseOverFormat;
     }
 
-    private int PageCount => _allItems.Count <= SlicesPerPage + 1 ? 1 : (int)Math.Ceiling(_allItems.Count / (double)SlicesPerPage);
+    private const int MaxSuggestions = 7;
 
-    /// <summary>Shows one page of the ring; with more than 12 formats, the last slice is "More ▸".</summary>
+    /// <summary>What most people want for each kind of file, best first.</summary>
+    private static IEnumerable<string> Suggested(IReadOnlyList<FileFormat> sources) =>
+        sources.Select(f => f.Category).Distinct().ToList() switch
+        {
+            // "srt" only exists when the video has text subtitles; then it's one of the most useful picks.
+            [FormatCategory.Video] => ["mp4", "mov", "mp3", "srt", "gif", "m4a", "webm", "mkv"],
+            [FormatCategory.Audio] => ["mp3", "m4a", "wav", "flac", "opus", "aac", "ogg"],
+            [FormatCategory.Image] => ["jpg", "png", "webp", "pdf", "ico", "gif"],
+            [FormatCategory.Document] => ["pdf", "docx", "md", "txt", "html", "odt"],
+            [FormatCategory.Text] => ["html", "pdf", "docx", "txt", "md"],
+            [FormatCategory.Data] => ["json", "csv", "yaml", "xml", "tsv"],
+            [FormatCategory.Subtitle] => ["srt", "vtt", "ass"],
+            [FormatCategory.Archive] => ["folder", "zip", "tgz", "tar"],
+            _ => Popular,
+        };
+
+    /// <summary>A ring slice: format name, a small caption ("audio", "smaller"), and the hint shown in the middle.</summary>
+    private static DonutItem Item(FileFormat target, string? sameAs)
+    {
+        if (target.IsFolder) return new DonutItem(target.Id, Strings.Extract, Strings.CaptionFolder, Strings.ExtractHint);
+        if (target.Id == sameAs) return new DonutItem(target.Id, target.Label, Strings.Smaller, Strings.SmallerHint(target.Label));
+        return new DonutItem(target.Id, target.Label, Strings.Caption(target.Category), Strings.ConvertHint(target));
+    }
+
+    private List<DonutItem> _featured = [];
+    private List<DonutItem> _rest = [];
+
+    private int PageCount => _rest.Count == 0 ? 1 : 1 + (int)Math.Ceiling(_rest.Count / (double)SlicesPerPage);
+
+    /// <summary>Page 0: the suggestions. Further pages: everything else, 11 at a time. "More" cycles through.</summary>
     private void ShowPage()
     {
-        if (PageCount == 1)
+        var items = _page == 0
+            ? new List<DonutItem>(_featured)
+            : _rest.Skip((_page - 1) * SlicesPerPage).Take(SlicesPerPage).ToList();
+
+        if (PageCount > 1)
         {
-            Donut.Items = _allItems;
+            var last = _page == PageCount - 1;
+            items.Add(new DonutItem(MoreId,
+                last ? Strings.BackLabel : Strings.MoreLabel,
+                $"{_page + 1}/{PageCount}",
+                last ? Strings.BackHint : Strings.MoreHint(_rest.Count),
+                Special: true));
         }
-        else
-        {
-            var page = _allItems.Skip(_page * SlicesPerPage).Take(SlicesPerPage).ToList();
-            page.Add(new DonutItem(MoreId, Strings.More(_page + 1, PageCount)));
-            Donut.Items = page;
-        }
+        Donut.Items = items;
         Donut.Highlighted = DonutMenu.NoIndex;
     }
 

@@ -74,7 +74,37 @@ public static class Strings
     public static string FilesCount(int count) => T($"{count} files", $"파일 {count}개");
     public static string ZipAll => T("ZIP all", "모두 ZIP");
     public static string Extract => T("Extract", "풀기");
-    public static string More(int page, int pages) => T($"More ▸ {page}/{pages}", $"더보기 ▸ {page}/{pages}");
+    public static string MoreLabel => T("More", "더보기");
+    public static string BackLabel => T("Back", "처음으로");
+    public static string MoreHint(int count) => T($"{count} more formats", $"다른 형식 {count}개 더 보기");
+    public static string BackHint => T("Back to the suggestions", "추천 형식으로 돌아가기");
+    public static string Smaller => T("smaller", "작게");
+    public static string SmallerHint(string label) => T($"Make a smaller {label}", $"{label} 작게 만들기");
+    public static string ExtractHint => T("Unpack into a folder", "폴더로 압축 풀기");
+    public static string ZipHint => T("Put it in a ZIP", "ZIP으로 압축하기");
+    public static string ZipAllHint => T("Put them all in one ZIP", "모두 ZIP 하나로 압축하기");
+    public static string CaptionFolder => T("folder", "폴더");
+    public static string CaptionArchive => T("archive", "압축");
+
+    public static string Caption(Bakkwo.Core.Formats.FormatCategory category) => category switch
+    {
+        Bakkwo.Core.Formats.FormatCategory.Image => T("image", "이미지"),
+        Bakkwo.Core.Formats.FormatCategory.Document => T("document", "문서"),
+        Bakkwo.Core.Formats.FormatCategory.Data => T("data", "데이터"),
+        Bakkwo.Core.Formats.FormatCategory.Text => T("text", "텍스트"),
+        Bakkwo.Core.Formats.FormatCategory.Video => T("video", "영상"),
+        Bakkwo.Core.Formats.FormatCategory.Audio => T("audio", "오디오"),
+        Bakkwo.Core.Formats.FormatCategory.Subtitle => T("subtitles", "자막"),
+        Bakkwo.Core.Formats.FormatCategory.Archive => T("archive", "압축"),
+        _ => "",
+    };
+
+    public static string ConvertHint(Bakkwo.Core.Formats.FileFormat target) => target.Category switch
+    {
+        // "형식으로" is correct after any format name, unlike choosing 로/으로 for "MP3", "WEBP"…
+        Bakkwo.Core.Formats.FormatCategory.Subtitle => T($"Save subtitles as {target.Label}", $"자막을 {target.Label} 형식으로 저장"),
+        _ => T($"Convert to {target.DisplayName}", $"{target.Label} 형식으로 변환"),
+    };
 
     // Status line
     public static string Ready => T("Ready.", "준비됐어요.");

@@ -115,6 +115,7 @@ public class MediaTests : IDisposable
 
         var ffmpeg = new FfmpegConverter();
         Assert.True(ffmpeg.HasSubtitles(mkv));
+        Assert.True(ffmpeg.HasTextSubtitles(mkv));
         Assert.False(ffmpeg.HasSubtitles(_temp.File("clip.mp4")));
 
         var engine = Engine();
@@ -181,6 +182,23 @@ public class MediaTests : IDisposable
         var mkv = await engine.ConvertAsync(ts, F("mkv"));
         Assert.True(mkv.Success, mkv.Error);
         Assert.Contains("dvb_subtitle", Probe(mkv.OutputPath!, "stream=codec_name"));
+
+        // Picture subtitles can't become text: not offered in the ring, and a clear message if asked anyway.
+        var ffmpeg = new FfmpegConverter();
+        Assert.True(ffmpeg.HasSubtitles(ts));
+        Assert.False(ffmpeg.HasTextSubtitles(ts));
+        var srt = await engine.ConvertAsync(ts, F("srt"));
+        Assert.False(srt.Success);
+        Assert.StartsWith("This video's subtitles are pictures", srt.Error);
+
+        // A file with a picture track first and a text track second: extraction takes the text one.
+        var mixed = _temp.File("mixed.mkv");
+        var textSrt = _temp.Write("text.srt", "1\n00:00:00,500 --> 00:00:01,500\n두 번째 트랙 second track\n");
+        Run(Ffmpeg, "-v", "error", "-i", ts, "-i", textSrt, "-map", "0:v", "-map", "0:s", "-map", "1", "-c", "copy", "-c:s:1", "srt", mixed);
+        Assert.True(ffmpeg.HasTextSubtitles(mixed));
+        var fromMixed = await engine.ConvertAsync(mixed, F("srt"));
+        Assert.True(fromMixed.Success, fromMixed.Error);
+        Assert.Contains("두 번째 트랙 second track", await File.ReadAllTextAsync(fromMixed.OutputPath!));
 
         var mp4 = await engine.ConvertAsync(ts, F("mp4"));
         Assert.True(mp4.Success, mp4.Error);
