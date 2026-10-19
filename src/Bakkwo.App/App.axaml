@@ -1,0 +1,18 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Bakkwo.App.App"
+             Name="Bakkwo"
+             RequestedThemeVariant="Default">
+  <Application.Styles>
+    <FluentTheme />
+  </Application.Styles>
+
+  <!-- On macOS this becomes the app menu next to the Apple menu ("Bakkwo" ▸ About / Quit). -->
+  <NativeMenu.Menu>
+    <NativeMenu>
+      <NativeMenuItem Header="About Bakkwo" />
+      <NativeMenuItemSeparator />
+      <NativeMenuItem Header="Quit Bakkwo" Gesture="Cmd+Q" />
+    </NativeMenu>
+  </NativeMenu.Menu>
+</Application>

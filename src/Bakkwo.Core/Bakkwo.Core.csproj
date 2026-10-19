@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Bakkwo.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      3.1.x is the last ImageSharp line that needs no licence key to build. ImageSharp 4 makes
+      Release builds fail without a Six Labors key, which every contributor would need.
+    -->
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageReference Include="YamlDotNet" Version="16.3.0" />
+    <PackageReference Include="Markdig" Version="0.40.0" />
+  </ItemGroup>
+
+  <!--
+    Advisories still open on ImageSharp 3.1.12 (fixed only in 4.1.2). All are denial of service
+    (crash, hang or memory use), none are code execution, and Bakkwo only ever processes files the
+    user picks on their own computer. Reviewed 2026-10-19; see SECURITY.md.
+  -->
+  <ItemGroup>
+    <!-- HistogramEqualization index overflow: Bakkwo never calls HistogramEqualization. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j3p4-wp97-rph4" />
+    <!-- TIFF CCITT T4 encoder overflow: Bakkwo writes uncompressed/default TIFF, never CCITT. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j9gm-c75j-xc9q" />
+    <!-- TIFF CCITT T6 encoder overflow: same as above. -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-jjfr-hcj7-qf5w" />
+    <!-- Malformed ICC profile can use a lot of memory while decoding (local DoS only). -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-gwg2-r3hj-4w44" />
+    <!-- Malformed BigTIFF can loop for a few seconds while decoding (local DoS only). -->
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-wmxv-xphr-5c9g" />
+  </ItemGroup>
+</Project>

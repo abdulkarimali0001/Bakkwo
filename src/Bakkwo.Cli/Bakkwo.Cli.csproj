@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Bakkwo.Cli</RootNamespace>
+    <AssemblyName>bakkwo</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Bakkwo.Core\Bakkwo.Core.csproj" />
+  </ItemGroup>
+</Project>

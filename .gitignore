@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.vscode/
+.idea/
+*.user
+TestResults/
+publish/
+.DS_Store
+build-log.txt
+setup-log.txt

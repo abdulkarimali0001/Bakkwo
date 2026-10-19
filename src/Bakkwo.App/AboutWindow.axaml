@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Bakkwo.App.AboutWindow"
+        Icon="/Assets/icon-256.png"
+        Width="380" SizeToContent="Height"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+  <StackPanel Margin="28,26,28,22" Spacing="6" HorizontalAlignment="Center">
+    <Image Source="/Assets/icon-256.png" Width="112" Height="112" HorizontalAlignment="Center" />
+    <TextBlock x:Name="NameText" FontSize="26" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,6,0,0" />
+    <TextBlock x:Name="TaglineText" FontSize="14" HorizontalAlignment="Center" Opacity="0.85" />
+    <TextBlock x:Name="MeaningText" FontSize="12" HorizontalAlignment="Center" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+    <Separator Margin="0,10" />
+    <TextBlock x:Name="VersionText" FontSize="12" HorizontalAlignment="Center" />
+    <TextBlock x:Name="FormatsText" FontSize="12" HorizontalAlignment="Center" Opacity="0.75" />
+    <TextBlock x:Name="EngineText" FontSize="12" HorizontalAlignment="Center" Opacity="0.75" TextWrapping="Wrap" TextAlignment="Center" />
+    <TextBlock x:Name="MadeByText" FontSize="12" HorizontalAlignment="Center" Margin="0,8,0,0" />
+    <TextBlock x:Name="InspiredText" FontSize="11" HorizontalAlignment="Center" Opacity="0.55" />
+    <Button x:Name="CloseButton" HorizontalAlignment="Center" Margin="0,14,0,0" MinWidth="90" HorizontalContentAlignment="Center" />
+  </StackPanel>
+</Window>
