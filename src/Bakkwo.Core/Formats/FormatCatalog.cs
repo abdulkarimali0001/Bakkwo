@@ -19,6 +19,13 @@ public static class FormatCatalog
 
         // Documents
         new("pdf", "PDF document", Document, [".pdf"]),
+        new("docx", "Word document", Document, [".docx"]),
+        new("doc", "Word 97–2003 document", Document, [".doc"]),
+        new("docm", "Word macro-enabled document", Document, [".docm"]),
+        new("dotx", "Word template", Document, [".dotx"]),
+        new("dot", "Word 97–2003 template", Document, [".dot"]),
+        new("rtf", "Rich Text document", Document, [".rtf"]),
+        new("odt", "OpenDocument text", Document, [".odt"]),
 
         // Text
         new("md", "Markdown", Text, [".md", ".markdown"]),

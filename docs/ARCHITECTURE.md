@@ -63,3 +63,20 @@ public sealed class MyConverter : ConverterBase
 
 Add the format to `FormatCatalog` and the converter to `ConverterRegistry.CreateDefault()`.
 The ring, the CLI and multi-step routes (`abc → json → csv`) work immediately.
+
+## Word documents
+
+`WordConverter` handles DOCX/DOCM/DOTX in-process with the Open XML SDK:
+
+- `DocxReader` walks the body (paragraphs, tables, content controls) and writes Markdown or text.
+  Headings are found by style *name* ("heading 1", "title") along the `basedOn` chain, because
+  Korean and other localized Word versions use different style ids. List numbering is counted per
+  abstract list definition, the way Word numbers, so lists split across instances keep counting.
+- `DocxWriter` builds a document from Markdig's syntax tree with real Word styles, one list
+  definition per numbered list (so each restarts at its own number in Word, LibreOffice and Google
+  Docs), tables, hyperlinks and pictures stored as PNG.
+
+`LibreOfficeConverter` adds DOC, DOT, RTF, ODT and exact-layout PDF by running `soffice --headless`
+with a private profile per concurrent job. Its edges cost 2, so the planner prefers the built-in
+route when both exist (DOCX → Markdown) and uses LibreOffice only where it's needed (DOCX → PDF,
+DOC → DOCX → Markdown).

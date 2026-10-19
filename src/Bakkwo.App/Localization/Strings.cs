@@ -96,7 +96,25 @@ public static class Strings
         $"파일 {count}개를 열었어요. 형식을 클릭하거나 Esc로 취소하세요.");
 
     // Engines
-    public static string AllReady => T("All converters ready, including audio and video.", "오디오·비디오를 포함한 모든 변환기가 준비됐어요.");
+    public static string AllReady => T(
+        "All converters ready, including audio, video and Word → PDF.",
+        "오디오·비디오와 Word → PDF를 포함한 모든 변환기가 준비됐어요.");
+    public static string LibreOfficeMissing => T(
+        "LibreOffice not found — install it (brew install --cask libreoffice) for DOC/RTF/ODT and Word → PDF.",
+        "LibreOffice가 없어요 — DOC/RTF/ODT와 Word → PDF 변환을 하려면 설치하세요 (brew install --cask libreoffice).");
+
+    /// <summary>One line about optional engines: all ready, or what to install.</summary>
+    public static string EngineStatus(IEnumerable<string> missingEngines)
+    {
+        var missing = missingEngines.ToList();
+        if (missing.Count == 0) return AllReady;
+        return string.Join("  ", missing.Select(name => name switch
+        {
+            "FFmpeg" => FfmpegMissing,
+            "LibreOffice" => LibreOfficeMissing,
+            _ => name,
+        }));
+    }
     public static string FfmpegMissing => T(
         "FFmpeg not found — install it (brew install ffmpeg) to convert audio and video.",
         "FFmpeg가 없어요 — 오디오·비디오를 변환하려면 설치하세요 (brew install ffmpeg).");

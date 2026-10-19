@@ -14,7 +14,7 @@ public partial class AboutWindow : Window
         CloseButton.Click += (_, _) => Close();
 
         var registry = ConverterRegistry.CreateDefault();
-        var mediaReady = registry.Converters.All(c => c.IsAvailable);
+        var missing = registry.Converters.Where(c => !c.IsAvailable).Select(c => c.Name).ToList();
 
         Title = Strings.About;
         NameText.Text = Strings.AppName;
@@ -22,7 +22,7 @@ public partial class AboutWindow : Window
         MeaningText.Text = Strings.Meaning;
         VersionText.Text = Strings.Version(AppVersion);
         FormatsText.Text = Strings.FormatsSupported(FormatCatalog.All.Count(f => !f.IsFolder));
-        EngineText.Text = mediaReady ? Strings.AllReady : Strings.FfmpegMissing;
+        EngineText.Text = Strings.EngineStatus(missing);
         MadeByText.Text = Strings.MadeBy;
         InspiredText.Text = Strings.Inspired;
         CloseButton.Content = Strings.Close;

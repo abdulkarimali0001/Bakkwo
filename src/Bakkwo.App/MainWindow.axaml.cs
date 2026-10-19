@@ -89,8 +89,7 @@ public partial class MainWindow : Window
         RecentCaption.Text = Strings.Recent;
         if (!_busy && !Donut.IsVisible) StatusText.Text = Strings.Ready;
 
-        var mediaReady = _engine.Registry.Converters.All(c => c.IsAvailable);
-        EngineText.Text = mediaReady ? Strings.AllReady : Strings.FfmpegMissing;
+        EngineText.Text = Strings.EngineStatus(_engine.Registry.Converters.Where(c => !c.IsAvailable).Select(c => c.Name));
 
         Donut.CancelText = Strings.Cancel;
         foreach (var row in _recent) row.RefreshLabels();

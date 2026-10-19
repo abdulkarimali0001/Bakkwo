@@ -23,6 +23,9 @@ public sealed partial class FfmpegConverter : ConverterBase
 
     public override string Name => "FFmpeg";
 
+    // FFmpeg already uses every core, so only a couple of media jobs at once.
+    public override int? MaxConcurrency => 2;
+
     public override bool IsAvailable => _ffmpeg.Value is not null;
 
     public override string? UnavailableReason => IsAvailable

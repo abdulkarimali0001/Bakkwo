@@ -24,6 +24,9 @@ files appear next to the originals. Nothing is uploaded anywhere.
   converter written for each pair.
 - **Parallel batches** with per-file progress; output names never overwrite anything (`photo (1).webp`).
 - **Image options**: quality, maximum size and grayscale. EXIF rotation is applied automatically.
+- **Word documents**: a built-in DOCX reader and writer (Open XML SDK) keeps headings, lists, tables,
+  links, code and pictures, and understands documents from Korean Word. LibreOffice, when installed,
+  adds DOC/RTF/ODT and an exact-layout PDF.
 - **Hand-written writers** for multi-size `.ico` files and image-to-PDF (a minimal PDF 1.4 writer that
   embeds JPEG data directly).
 - **Command-line tool** that shares the same engine.
@@ -39,14 +42,20 @@ files appear next to the originals. Nothing is uploaded anywhere.
 | From | To |
 | --- | --- |
 | **Images**: JPG, PNG, WebP, GIF, BMP, TIFF, TGA | each other, ICO, PDF |
+| **Word**: DOCX, DOCM, DOTX | Markdown, TXT, HTML; PDF, DOC, RTF, ODT² |
+| **Word (older/other)**²: DOC, DOT, RTF, ODT | DOCX, PDF, DOC, RTF, ODT, TXT, HTML, Markdown |
+| **Markdown, TXT** | DOCX (headings, lists, tables, links, pictures); PDF² |
 | **Data**: JSON, YAML, CSV, TSV, XML | each other |
 | **Text**: Markdown, HTML, TXT | HTML, TXT |
 | **Archives**: ZIP, TAR, TAR.GZ | each other, extract to a folder; any files or folders → one ZIP |
 | **Video**¹: MP4, MOV, MKV, WebM, AVI | each other, GIF, MP3, M4A, WAV, FLAC, OGG |
 | **Audio**¹: MP3, M4A, WAV, FLAC, OGG | each other |
 
-¹ Needs [FFmpeg](https://ffmpeg.org) installed (`brew install ffmpeg` on macOS). Without it, media
-formats are simply left out of the ring and the app says how to enable them.
+¹ Needs [FFmpeg](https://ffmpeg.org) (`brew install ffmpeg`).
+² Needs [LibreOffice](https://www.libreoffice.org) (`brew install --cask libreoffice`) for an exact-layout PDF and
+the older formats. DOCX ↔ Markdown/text/HTML is built in and needs nothing else.
+
+Without an optional engine, its formats are simply left out of the ring and the app says how to enable them.
 
 ## Run it
 
@@ -57,7 +66,7 @@ On macOS: `brew install --cask dotnet-sdk`, or download the Arm64 installer for 
 git clone https://github.com/<your-username>/Bakkwo.git
 cd Bakkwo
 dotnet run --project src/Bakkwo.App      # the desktop app
-dotnet test                              # the test suite (42 tests)
+dotnet test                              # the test suite (54 tests)
 ```
 
 On macOS you can also double-click `build.command` to run the tests and save the output to
@@ -114,7 +123,8 @@ KnifeLemon (MIT). Bakkwo is an independent implementation written from scratch.
 
 Libraries: [Avalonia](https://avaloniaui.net) (MIT), [ImageSharp](https://github.com/SixLabors/ImageSharp)
 (Six Labors Split License, free for open-source use; pinned to 3.1.x, which needs no licence key), [YamlDotNet](https://github.com/aaubry/YamlDotNet)
-(MIT), [Markdig](https://github.com/xoofx/markdig) (BSD-2).
+(MIT), [Markdig](https://github.com/xoofx/markdig) (BSD-2),
+[Open XML SDK](https://github.com/dotnet/Open-XML-SDK) (MIT); optional [LibreOffice](https://www.libreoffice.org) (MPL-2.0) and FFmpeg run as separate programs.
 
 ## License
 

@@ -37,6 +37,9 @@ public interface IConverter
 
     string? UnavailableReason { get; }
 
+    /// <summary>How many conversions this converter may run at once (null = no limit). Heavy external tools use 1–2.</summary>
+    int? MaxConcurrency { get; }
+
     IEnumerable<ConversionEdge> Edges { get; }
 
     /// <summary>
@@ -51,6 +54,7 @@ public abstract class ConverterBase : IConverter
     public abstract string Name { get; }
     public virtual bool IsAvailable => true;
     public virtual string? UnavailableReason => null;
+    public virtual int? MaxConcurrency => null;
     public abstract IEnumerable<ConversionEdge> Edges { get; }
 
     public abstract Task ConvertAsync(ConversionStep step, ConversionOptions options, IProgress<double>? progress, CancellationToken ct);

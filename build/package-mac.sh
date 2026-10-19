@@ -59,6 +59,13 @@ cat > "$CONTENTS/Info.plist" <<EOF
       <array>
         <string>public.image</string>
         <string>com.adobe.pdf</string>
+        <string>org.openxmlformats.wordprocessingml.document</string>
+        <string>org.openxmlformats.wordprocessingml.document.macroenabled</string>
+        <string>org.openxmlformats.wordprocessingml.template</string>
+        <string>com.microsoft.word.doc</string>
+        <string>com.microsoft.word.dot</string>
+        <string>public.rtf</string>
+        <string>org.oasis-open.opendocument.text</string>
         <string>public.movie</string>
         <string>public.audio</string>
         <string>public.json</string>

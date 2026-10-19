@@ -15,6 +15,8 @@ public sealed class ConversionEngine
     public ConverterRegistry Registry { get; }
     public RoutePlanner Planner { get; }
 
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<IConverter, SemaphoreSlim> _limits = new();
+
     public async Task<ConversionResult> ConvertAsync(
         string inputPath,
         FileFormat target,
@@ -57,7 +59,18 @@ public sealed class ConversionEngine
                     ? null
                     : new InlineProgress(v => progress.Report((stepIndex + Math.Clamp(v, 0, 1)) / route.Count));
 
-                await edge.Converter.ConvertAsync(new ConversionStep(current, output, currentFormat, nextFormat), options, stepProgress, ct);
+                var limit = edge.Converter.MaxConcurrency is int max
+                    ? _limits.GetOrAdd(edge.Converter, _ => new SemaphoreSlim(max))
+                    : null;
+                if (limit is not null) await limit.WaitAsync(ct);
+                try
+                {
+                    await edge.Converter.ConvertAsync(new ConversionStep(current, output, currentFormat, nextFormat), options, stepProgress, ct);
+                }
+                finally
+                {
+                    limit?.Release();
+                }
                 current = output;
                 currentFormat = nextFormat;
             }
@@ -90,10 +103,8 @@ public sealed class ConversionEngine
         CancellationToken ct = default)
     {
         var results = new ConversionResult[inputs.Count];
-        // FFmpeg already uses every core, so only a couple of media jobs at once.
-        var parallel = target.Category is FormatCategory.Video or FormatCategory.Audio
-            ? 2
-            : Math.Max(1, Environment.ProcessorCount - 1);
+        // Heavy converters (FFmpeg, LibreOffice) also limit themselves via MaxConcurrency.
+        var parallel = Math.Max(1, Environment.ProcessorCount - 1);
         using var gate = new SemaphoreSlim(parallel);
 
         var tasks = inputs.Select(async (input, index) =>
