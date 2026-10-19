@@ -133,18 +133,40 @@ public static class FormatCatalog
         return best;
     }
 
-    private static bool LooksLikeTransportStream(string path)
+    /// <summary>
+    /// True when the file holds MPEG-TS packets: the 0x47 sync byte repeating every 188 bytes (or every
+    /// 192 bytes for camcorder/Blu-ray style packets). Searching the first 64 KB also covers streamed
+    /// and downloaded .ts files that start with an ID3 tag or padding. TypeScript source never matches.
+    /// </summary>
+    internal static bool LooksLikeTransportStream(string path)
     {
         try
         {
             if (!File.Exists(path)) return true; // name-only detection (CLI targets, tests)
-            using var stream = File.OpenRead(path);
-            return stream.ReadByte() == 0x47;
+            var buffer = new byte[64 * 1024];
+            int read;
+            using (var stream = File.OpenRead(path)) read = stream.ReadAtLeast(buffer, buffer.Length, throwOnEndOfStream: false);
+            return HasTsSync(buffer.AsSpan(0, read));
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return false;
         }
+    }
+
+    internal static bool HasTsSync(ReadOnlySpan<byte> data)
+    {
+        foreach (var stride in (ReadOnlySpan<int>)[188, 192])
+        {
+            const int packetsToCheck = 5;
+            for (var start = 0; start + stride * (packetsToCheck - 1) < data.Length; start++)
+            {
+                var ok = true;
+                for (var k = 0; k < packetsToCheck && ok; k++) ok = data[start + k * stride] == 0x47;
+                if (ok) return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>The file name without its (possibly double) extension: "logs.tar.gz" → "logs".</summary>

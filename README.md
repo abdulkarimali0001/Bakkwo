@@ -54,6 +54,11 @@ files appear next to the originals. Nothing is uploaded anywhere.
 | **Audio**¹: MP3, M4A, Apple Lossless, AAC, WAV, FLAC, OGG, Opus, AIFF, WMA, AMR | each other |
 | **Subtitles**¹: SRT, WebVTT, ASS/SSA, or the subtitle track inside MKV/MP4/MOV/WebM/TS | SRT, WebVTT, ASS |
 
+**Subtitles stay with the video.** Converting a video keeps its subtitles where the new format can hold them: text
+subtitles become a switchable track (MP4/MOV, WebM, MKV); picture subtitles from TV, DVD or Blu-ray (DVB, VobSub,
+PGS) stay a track in MKV/TS and are burned into the picture for MP4/MOV/WebM, which can't store them.
+`.ts` recordings and downloads (including HLS segments that start with an ID3 tag) are recognised by their packets.
+
 ¹ Needs [FFmpeg](https://ffmpeg.org) (`brew install ffmpeg`). Bakkwo asks FFmpeg which encoders it has and
 falls back where it can (OGG → Opus when there's no Vorbis encoder, as in Homebrew's build) or hides what that
 build can't write (AMR, OGV).
@@ -71,7 +76,7 @@ On macOS: `brew install --cask dotnet-sdk`, or download the Arm64 installer for 
 git clone https://github.com/<your-username>/Bakkwo.git
 cd Bakkwo
 dotnet run --project src/Bakkwo.App      # the desktop app
-dotnet test                              # the test suite (72 tests)
+dotnet test                              # the test suite (76 tests)
 ```
 
 On macOS you can also double-click `build.command` to run the tests and save the output to

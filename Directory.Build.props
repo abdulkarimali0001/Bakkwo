@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Run on .NET 8, 9 or 10, whichever runtime is installed. -->
     <RollForward>Major</RollForward>
-    <Version>0.3.0</Version>
+    <Version>0.3.1</Version>
     <Authors>Khamis Abdulkarim Ali</Authors>
   </PropertyGroup>
 </Project>

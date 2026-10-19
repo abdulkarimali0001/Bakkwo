@@ -87,6 +87,88 @@ public sealed partial class FfmpegConverter : ConverterBase
         }
     }
 
+    /// <summary>A subtitle stream: <see cref="Number"/> is its position among subtitle streams (ffmpeg's 0:s:N).</summary>
+    public sealed record SubtitleTrack(int Number, string Codec);
+
+    /// <summary>What happens to subtitles when a video is converted: tracks kept (with their output codec) or one burned in.</summary>
+    internal sealed record SubtitlePlan(IReadOnlyList<(int Number, string OutputCodec)> Keep, int? BurnIn)
+    {
+        public static SubtitlePlan None { get; } = new([], null);
+    }
+
+    private static readonly HashSet<string> TextSubtitleCodecs = ["subrip", "srt", "ass", "ssa", "mov_text", "webvtt", "text"];
+    private static readonly HashSet<string> PictureSubtitleCodecs = ["dvd_subtitle", "dvb_subtitle", "hdmv_pgs_subtitle", "xsub"];
+
+    /// <summary>The subtitle streams in a file, in order (empty if there are none or ffprobe is missing).</summary>
+    public IReadOnlyList<SubtitleTrack> SubtitleTracks(string path)
+    {
+        var ffprobe = FfprobePath();
+        if (ffprobe is null) return [];
+        try
+        {
+            var info = new ProcessStartInfo(ffprobe)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            // stream=index,codec_name: MPEG-TS files list each stream again under their program, so de-duplicate by index.
+            foreach (var arg in new[] { "-v", "error", "-select_streams", "s", "-show_entries", "stream=index,codec_name", "-of", "csv=p=0", path })
+                info.ArgumentList.Add(arg);
+            using var process = Process.Start(info);
+            if (process is null) return [];
+            var output = process.StandardOutput.ReadToEnd();
+            if (!process.WaitForExit(5000))
+            {
+                process.Kill();
+                return [];
+            }
+            return output.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(line => line.Split(','))
+                .Where(parts => parts.Length >= 2 && int.TryParse(parts[0], out _))
+                .DistinctBy(parts => parts[0])
+                .OrderBy(parts => int.Parse(parts[0]))
+                .Select((parts, i) => new SubtitleTrack(i, parts[1]))
+                .ToList();
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>
+    /// Keeps subtitles wherever the target can hold them: text subtitles become a switchable track
+    /// (MP4/MOV: mov_text, WebM: WebVTT, MKV: SRT or ASS), picture subtitles (DVB, DVD, Blu-ray) are
+    /// copied into MKV/TS. When the target can't hold picture subtitles (MP4, MOV, WebM) and there's
+    /// no text track, the first picture track is burned into the video so it isn't lost.
+    /// </summary>
+    internal static SubtitlePlan PlanSubtitles(string target, IReadOnlyList<SubtitleTrack> tracks)
+    {
+        var text = tracks.Where(t => TextSubtitleCodecs.Contains(t.Codec)).ToList();
+        var pictures = tracks.Where(t => PictureSubtitleCodecs.Contains(t.Codec)).ToList();
+
+        switch (target)
+        {
+            case "mp4" or "mov" or "webm":
+                var codec = target == "webm" ? "webvtt" : "mov_text";
+                if (text.Count > 0) return new SubtitlePlan(text.Select(t => (t.Number, codec)).ToList(), null);
+                return pictures.Count > 0 ? new SubtitlePlan([], pictures[0].Number) : SubtitlePlan.None;
+            case "mkv":
+                return new SubtitlePlan(
+                    text.Select(t => (t.Number, t.Codec is "ass" or "ssa" ? "ass" : "srt"))
+                        .Concat(pictures.Select(t => (t.Number, "copy")))
+                        .OrderBy(t => t.Number)
+                        .ToList(),
+                    null);
+            case "ts":
+                return new SubtitlePlan(pictures.Where(t => t.Codec == "dvb_subtitle").Select(t => (t.Number, "copy")).ToList(), null);
+            default:
+                return SubtitlePlan.None;
+        }
+    }
+
     /// <summary>True if the file has at least one subtitle track (uses ffprobe next to ffmpeg).</summary>
     public bool HasSubtitles(string path)
     {
@@ -139,7 +221,10 @@ public sealed partial class FfmpegConverter : ConverterBase
             CreateNoWindow = true,
         };
         foreach (var arg in new[] { "-hide_banner", "-nostdin", "-y", "-i", step.InputPath }) info.ArgumentList.Add(arg);
-        foreach (var arg in ArgumentsFor(step.To.Id, options)) info.ArgumentList.Add(arg);
+        var subtitles = step.To.Id is "mp4" or "mov" or "mkv" or "webm" or "ts"
+            ? PlanSubtitles(step.To.Id, SubtitleTracks(step.InputPath))
+            : SubtitlePlan.None;
+        foreach (var arg in ArgumentsFor(step.To.Id, options, subtitles)) info.ArgumentList.Add(arg);
         foreach (var arg in new[] { "-progress", "pipe:1", "-nostats", step.OutputPath }) info.ArgumentList.Add(arg);
 
         using var process = Process.Start(info) ?? throw new InvalidOperationException("Could not start FFmpeg.");
@@ -200,14 +285,13 @@ public sealed partial class FfmpegConverter : ConverterBase
         progress?.Report(1);
     }
 
-    internal IReadOnlyList<string> ArgumentsFor(string target, ConversionOptions options)
+    internal IReadOnlyList<string> ArgumentsFor(string target, ConversionOptions options, SubtitlePlan? subtitles = null)
     {
+        subtitles ??= SubtitlePlan.None;
         // Quality 100 → CRF 18 (near-lossless), quality 10 → CRF 33 (small).
         var quality = Math.Clamp(options.Quality, 1, 100);
         var crf = Math.Clamp((int)Math.Round(35 - quality * 0.17), 18, 34).ToString(CultureInfo.InvariantCulture);
-        // -sn: subtitle tracks aren't copied into converted videos (bitmap subtitles can't go into MP4 and
-        // would fail the whole conversion); extracting them is a separate target (SRT/VTT/ASS).
-        var videoFilter = new List<string> { "-sn", "-vf", ScaleFilter(options.MaxDimension) };
+        var videoFilter = Picture(options.MaxDimension, subtitles);
         var h264 = Has("libx264")
             ? new[] { "-c:v", "libx264", "-preset", "medium", "-crf", crf, "-pix_fmt", "yuv420p" }
             : new[] { "-c:v", "mpeg4", "-q:v", "4" };
@@ -254,6 +338,29 @@ public sealed partial class FfmpegConverter : ConverterBase
 
             _ => throw new NotSupportedException($"FFmpeg target {target} is not configured."),
         };
+    }
+
+    /// <summary>
+    /// Stream selection and the picture filter. Without a subtitle plan: default streams, no subtitles.
+    /// With one: first video, every audio track, and the chosen subtitle tracks, or one burned in.
+    /// </summary>
+    private static List<string> Picture(int? maxDimension, SubtitlePlan subtitles)
+    {
+        var scale = ScaleFilter(maxDimension);
+        if (subtitles.BurnIn is int burn)
+        {
+            return ["-filter_complex", $"[0:V:0][0:s:{burn}]overlay=eof_action=pass,{scale}[v]", "-map", "[v]", "-map", "0:a?"];
+        }
+        if (subtitles.Keep.Count == 0)
+        {
+            return ["-sn", "-vf", scale];
+        }
+
+        var args = new List<string> { "-map", "0:V:0", "-map", "0:a?" };
+        foreach (var (number, _) in subtitles.Keep) args.AddRange(["-map", $"0:s:{number}"]);
+        args.AddRange(["-vf", scale]);
+        for (var i = 0; i < subtitles.Keep.Count; i++) args.AddRange([$"-c:s:{i}", subtitles.Keep[i].OutputCodec]);
+        return args;
     }
 
     /// <summary>Shrinks so neither side exceeds <paramref name="max"/> (never enlarges) and keeps sizes even, which H.264 needs.</summary>

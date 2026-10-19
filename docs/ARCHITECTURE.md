@@ -88,5 +88,11 @@ choosing fallbacks where possible (OGG uses Vorbis, else Opus). Video → GIF ed
 planner never chains from them, so a video can't wander into still-image formats via GIF. Converting
 a format to itself (a self edge) re-encodes it to shrink or compress, and the result is named
 `name (720p).ext` / `name (compressed).ext`. Subtitle targets are offered in the ring only when
-`ffprobe` finds a subtitle track. `.ts` files are checked for the MPEG-TS sync byte so TypeScript
-sources aren't mistaken for video.
+`ffprobe` finds a subtitle track. `.ts` files must show MPEG-TS packets (0x47 every 188 or 192 bytes
+within the first 64 KB), so TypeScript sources aren't mistaken for video while HLS segments with an
+ID3 header still are.
+
+When converting video → video, `PlanSubtitles` decides per subtitle track: text tracks are re-encoded
+for the target (mov_text, WebVTT, SRT/ASS), picture tracks are copied where the container allows
+(MKV, DVB in TS), and otherwise the first picture track is burned in with an `overlay` filter.
+`tests/Pgs.cs` writes a tiny PGS file so this path is tested with real DVB subtitles.
