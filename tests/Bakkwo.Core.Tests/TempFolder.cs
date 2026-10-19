@@ -22,6 +22,7 @@ public sealed class TempFolder : IDisposable
 
     public void Dispose()
     {
-        try { Directory.Delete(Path, recursive: true); } catch (IOException) { }
+        // Windows can briefly hold files open after a test; leftovers in %TEMP% are harmless.
+        try { Directory.Delete(Path, recursive: true); } catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
     }
 }

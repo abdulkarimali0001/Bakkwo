@@ -1,7 +1,7 @@
 """Draws the Bakkwo app icon: the format ring around 바꿔, on a purple macOS-style tile.
 
 Run:  python3 build/icon/make_icon.py   (needs Pillow and a Korean font, e.g. Noto Sans CJK KR)
-Writes icon-1024.png, Bakkwo.icns and Bakkwo.ico into src/Bakkwo.App/Assets/.
+Writes icon-1024/512/256.png, Bakkwo.icns and Bakkwo.ico into src/Bakkwo.App/Assets/.
 """
 import math, os, subprocess, sys
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -74,6 +74,7 @@ def main():
     big = icon.resize((1024, 1024), Image.LANCZOS)
     big.save(os.path.join(OUT, "icon-1024.png"))
     big.resize((256, 256), Image.LANCZOS).save(os.path.join(OUT, "icon-256.png"))
+    big.resize((512, 512), Image.LANCZOS).save(os.path.join(OUT, "icon-512.png"))
     big.save(os.path.join(OUT, "Bakkwo.icns"), sizes=[(16, 16), (32, 32), (64, 64), (128, 128), (256, 256), (512, 512), (1024, 1024)])
     big.save(os.path.join(OUT, "Bakkwo.ico"), sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
     print("icons written to", OUT)

@@ -14,8 +14,6 @@
   <ItemGroup>
     <!-- Window and About icons, loaded as avares://Bakkwo/Assets/... -->
     <AvaloniaResource Include="Assets\icon-256.png" />
-    <!-- Kept next to the app for the macOS bundle script. -->
-    <None Include="Assets\Bakkwo.icns" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

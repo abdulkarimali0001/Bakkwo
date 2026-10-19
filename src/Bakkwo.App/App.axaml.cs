@@ -27,6 +27,14 @@ public partial class App : Application
             // Windows/Linux: "Open with Bakkwo" passes the files as arguments.
             var startupFiles = desktop.Args?.Where(a => File.Exists(a) || Directory.Exists(a)).ToList() ?? [];
             if (startupFiles.Count > 0) _main.Opened += (_, _) => _main.OpenFiles(startupFiles);
+
+            // Files (or "come to the front") sent by another copy of Bakkwo.
+            var main = _main;
+            SingleInstance.OnReceived(paths => Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (paths.Count > 0) main.OpenFiles(paths);
+                else main.BringToFront();
+            }));
         }
 
         // macOS: files dropped on the Dock icon or opened via Finder's "Open With" arrive as activation events.

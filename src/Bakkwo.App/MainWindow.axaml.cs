@@ -118,9 +118,29 @@ public partial class MainWindow : Window
     public void OpenFiles(IReadOnlyList<string> paths)
     {
         if (_busy || paths.Count == 0) return;
+        BringToFront();
+
+        // Explorer sends a multi-file selection one file at a time: gather what arrives close together.
+        var files = paths.ToList();
+        if (Donut.IsVisible && _pinned && DateTime.UtcNow - _lastExternalOpen < TimeSpan.FromSeconds(3))
+        {
+            files = _pendingFiles.Concat(paths).Distinct(StringComparer.Ordinal).ToList();
+        }
+        _lastExternalOpen = DateTime.UtcNow;
+
+        ShowDonut(files, new Point(Overlay.Bounds.Width / 2, Overlay.Bounds.Height / 2 + 40), pinned: true);
+        StatusText.Text = Strings.OpenedFromFinder(files.Count);
+    }
+
+    private DateTime _lastExternalOpen = DateTime.MinValue;
+
+    public void BringToFront()
+    {
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Activate();
-        ShowDonut(paths.ToList(), new Point(Overlay.Bounds.Width / 2, Overlay.Bounds.Height / 2 + 40), pinned: true);
-        StatusText.Text = Strings.OpenedFromFinder(paths.Count);
+        // Some systems ignore Activate() for background apps; a brief Topmost brings the window forward.
+        Topmost = true;
+        Topmost = false;
     }
 
     private void SaveOptions()

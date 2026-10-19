@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Bakkwo
+Name[ko]=바꿔
+GenericName=File Converter
+GenericName[ko]=파일 변환기
+Comment=Drop files and pick a format from the ring. Works offline.
+Comment[ko]=파일을 놓고 링에서 형식을 고르세요. 오프라인으로 작동합니다.
+Exec=@EXEC@ %F
+Icon=bakkwo
+Terminal=false
+Categories=Utility;AudioVideo;Office;
+Keywords=convert;converter;image;video;audio;pdf;word;변환;
+StartupWMClass=Bakkwo
+MimeType=image/jpeg;image/png;image/webp;image/gif;image/bmp;image/tiff;image/x-tga;application/pdf;application/vnd.openxmlformats-officedocument.wordprocessingml.document;application/vnd.ms-word.document.macroEnabled.12;application/vnd.openxmlformats-officedocument.wordprocessingml.template;application/msword;application/rtf;application/vnd.oasis.opendocument.text;text/markdown;text/html;text/plain;application/json;application/x-yaml;application/yaml;text/csv;text/tab-separated-values;application/xml;text/xml;video/mp4;video/quicktime;video/x-matroska;video/webm;video/x-msvideo;video/x-ms-wmv;video/x-flv;video/mpeg;video/mp2t;video/3gpp;video/ogg;audio/mpeg;audio/mp4;audio/aac;audio/x-wav;audio/wav;audio/flac;audio/ogg;audio/opus;audio/x-aiff;audio/x-ms-wma;audio/amr;application/x-subrip;text/vtt;text/x-ssa;application/zip;application/x-tar;application/gzip;application/x-compressed-tar;inode/directory;

@@ -21,7 +21,9 @@ dotnet publish src/Bakkwo.App -c Release -r "$RID" --self-contained -p:UseAppHos
 mkdir -p "$CONTENTS/MacOS" "$CONTENTS/Resources/en.lproj" "$CONTENTS/Resources/ko.lproj"
 cp -R "$OUT/bin/." "$CONTENTS/MacOS/"
 rm -f "$CONTENTS/MacOS/"*.pdb "$CONTENTS/MacOS/Bakkwo.icns"
+rm -rf "$CONTENTS/MacOS/Assets"
 cp src/Bakkwo.App/Assets/Bakkwo.icns "$CONTENTS/Resources/Bakkwo.icns"
+cp LICENSE THIRD-PARTY-NOTICES.md "$CONTENTS/Resources/"
 
 printf '"CFBundleDisplayName" = "Bakkwo";\n"CFBundleName" = "Bakkwo";\n' > "$CONTENTS/Resources/en.lproj/InfoPlist.strings"
 printf '"CFBundleDisplayName" = "바꿔";\n"CFBundleName" = "바꿔";\n' > "$CONTENTS/Resources/ko.lproj/InfoPlist.strings"

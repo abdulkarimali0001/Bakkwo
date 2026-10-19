@@ -450,7 +450,18 @@ public static class FfmpegLocator
 
         var exe = OperatingSystem.IsWindows() ? "ffmpeg.exe" : "ffmpeg";
         var pathDirs = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
-        var known = new[] { "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/snap/bin" };
+        var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var known = OperatingSystem.IsWindows()
+            ? new[]
+            {
+                Path.Combine(local, "Microsoft", "WinGet", "Links"),          // winget install ffmpeg
+                @"C:\ProgramData\chocolatey\bin",                          // choco install ffmpeg
+                Path.Combine(home, "scoop", "shims"),                         // scoop install ffmpeg
+                @"C:\ffmpeg\bin",
+                @"C:\Program Files\ffmpeg\bin",
+            }
+            : new[] { "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/snap/bin" };
 
         return pathDirs.Concat(known)
             .Select(dir => Path.Combine(dir, exe))

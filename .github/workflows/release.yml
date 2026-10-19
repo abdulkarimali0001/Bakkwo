@@ -1,0 +1,136 @@
+name: Release
+
+# Push a version tag to build every download and publish a GitHub Release:
+#   git tag v0.5.0 && git push origin v0.5.0
+# (GitHub Desktop: History → right-click the commit → Create Tag…, then Push.)
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  test:
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Install FFmpeg (so media tests run for real)
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg; fi
+          if [ "$RUNNER_OS" = "macOS" ]; then brew install ffmpeg; fi
+          if [ "$RUNNER_OS" = "Windows" ]; then choco install ffmpeg -y --no-progress; fi
+      - run: dotnet test --configuration Release
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Version
+        id: v
+        shell: bash
+        run: echo "version=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)" >> "$GITHUB_OUTPUT"
+      - name: Publish (self-contained, with the 바꿔 icon embedded)
+        run: dotnet publish src/Bakkwo.App -c Release -r win-x64 --self-contained -o publish/Bakkwo-win-x64
+      - name: Portable zip
+        shell: pwsh
+        run: |
+          Remove-Item publish/Bakkwo-win-x64/*.pdb -ErrorAction SilentlyContinue
+          Remove-Item publish/Bakkwo-win-x64/Assets -Recurse -ErrorAction SilentlyContinue
+          Copy-Item LICENSE publish/Bakkwo-win-x64/LICENSE.txt
+          Copy-Item THIRD-PARTY-NOTICES.md publish/Bakkwo-win-x64/
+          Compress-Archive -Path publish/Bakkwo-win-x64/* -DestinationPath "publish/Bakkwo-${{ steps.v.outputs.version }}-win-x64-Portable.zip"
+      - name: Installer (Inno Setup)
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress; }
+          & $iscc /DAppVersion=${{ steps.v.outputs.version }} build\windows\bakkwo.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            publish/*-win-x64-Portable.zip
+            publish/*-win-x64-Setup.exe
+
+  macos:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build Apple Silicon and Intel apps
+        run: |
+          VERSION=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props)
+          mkdir -p dist
+          for rid in osx-arm64 osx-x64; do
+            RID=$rid ./build/package-mac.sh
+            arch=${rid#osx-}
+            ditto -c -k --keepParent publish/Bakkwo.app "dist/Bakkwo-$VERSION-macos-$arch.zip"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*.zip
+
+  linux:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Build x64 and ARM64 packages
+        run: |
+          ./build/package-linux.sh
+          RID=linux-arm64 ./build/package-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: publish/*.tar.gz
+
+  release:
+    needs: [windows, macos, linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: 바꿔 Bakkwo ${{ github.ref_name }}
+          generate_release_notes: true
+          files: dist/*
+          body: |
+            ### Download
+            | Your computer | File |
+            | --- | --- |
+            | **Windows 10/11** | `…-win-x64-Setup.exe` (installer) or `…-win-x64-Portable.zip` |
+            | **Mac, Apple Silicon (M1–M4)** | `…-macos-arm64.zip` |
+            | **Mac, Intel** | `…-macos-x64.zip` |
+            | **Linux** | `…-linux-x64.tar.gz` (or `linux-arm64`), then run `./install.sh` |
+
+            For audio/video install [FFmpeg](https://ffmpeg.org); for DOC/RTF/ODT and Word → PDF install [LibreOffice](https://www.libreoffice.org).
+            The Mac app isn't notarized yet: the first time, right-click it → **Open**. On Windows, SmartScreen may ask: **More info → Run anyway**.
