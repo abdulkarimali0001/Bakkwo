@@ -34,10 +34,11 @@
         <TextBlock x:Name="QualityLabel" Text="90" Width="34" VerticalAlignment="Center" />
 
         <TextBlock x:Name="MaxSizeCaption" Margin="18,0,8,0" VerticalAlignment="Center" />
-        <ComboBox x:Name="MaxSizeBox" SelectedIndex="0" Width="130" VerticalAlignment="Center">
+        <ComboBox x:Name="MaxSizeBox" SelectedIndex="0" Width="160" VerticalAlignment="Center">
           <ComboBoxItem x:Name="OriginalItem" />
-          <ComboBoxItem Content="3840 px" />
-          <ComboBoxItem Content="1920 px" />
+          <ComboBoxItem Content="3840 px · 4K" />
+          <ComboBoxItem Content="1920 px · 1080p" />
+          <ComboBoxItem Content="1280 px · 720p" />
           <ComboBoxItem Content="1080 px" />
           <ComboBoxItem Content="512 px" />
         </ComboBox>

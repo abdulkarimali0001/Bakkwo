@@ -16,7 +16,19 @@ namespace Bakkwo.App;
 public partial class MainWindow : Window
 {
     private const string ZipAllId = "__zip_all__";
-    private static readonly int?[] MaxSizes = [null, 3840, 1920, 1080, 512];
+    private const string MoreId = "__more__";
+    private const int SlicesPerPage = 11;
+
+    /// <summary>Formats people pick most, shown on the ring's first page.</summary>
+    private static readonly string[] Popular =
+        ["mp4", "mp3", "mov", "gif", "jpg", "png", "pdf", "docx", "webp", "m4a", "wav", "webm", "mkv", "md", "txt",
+         "html", "csv", "json", "xlsx", "srt", "zip", "folder"];
+
+    private List<DonutItem> _allItems = [];
+    private int _page;
+    private readonly Avalonia.Threading.DispatcherTimer _moreTimer = new() { Interval = TimeSpan.FromMilliseconds(550) };
+    // Longest side in pixels; applies to images and videos (1920 ≈ 1080p, 1280 ≈ 720p for 16:9).
+    private static readonly int?[] MaxSizes = [null, 3840, 1920, 1280, 1080, 512];
 
     private readonly ConversionEngine _engine = new(ConverterRegistry.CreateDefault());
     private readonly ObservableCollection<RecentItem> _recent = [];
@@ -49,6 +61,12 @@ public partial class MainWindow : Window
         Root.AddHandler(DragDrop.DropEvent, OnDrop);
 
         Overlay.PointerMoved += OnOverlayPointerMoved;
+        // While dragging, resting on "More" turns the page.
+        _moreTimer.Tick += (_, _) =>
+        {
+            _moreTimer.Stop();
+            if (Donut.IsVisible && Donut.Highlighted >= 0 && Donut.Items[Donut.Highlighted].Id == MoreId) NextPage();
+        };
         Overlay.PointerPressed += OnOverlayPointerPressed;
         OpenButton.Click += OnOpenClick;
         AboutButton.Click += (_, _) => ShowAbout();
@@ -137,7 +155,14 @@ public partial class MainWindow : Window
         if (Donut.IsVisible && !_pinned)
         {
             MoveDonutIfFar(e.GetPosition(Overlay));
-            Donut.Highlighted = Donut.HitTest(e.GetPosition(Donut));
+            var hit = Donut.HitTest(e.GetPosition(Donut));
+            var onMore = hit >= 0 && Donut.Items[hit].Id == MoreId;
+            if (hit != Donut.Highlighted)
+            {
+                Donut.Highlighted = hit;
+                _moreTimer.Stop();
+                if (onMore) _moreTimer.Start();
+            }
         }
     }
 
@@ -154,6 +179,12 @@ public partial class MainWindow : Window
         if (Donut.IsVisible && !_pinned && Donut.Highlighted >= 0)
         {
             var chosen = Donut.Items[Donut.Highlighted].Id;
+            if (chosen == MoreId)
+            {
+                NextPage();
+                Pin();
+                return;
+            }
             HideDonut();
             await StartAsync(files, chosen);
         }
@@ -189,8 +220,37 @@ public partial class MainWindow : Window
 
         if (formats.All(f => f is not null))
         {
-            items.AddRange(_engine.Planner.CommonTargets(formats.Select(f => f!))
-                .Select(f => new DonutItem(f.Id, f.IsFolder ? Strings.Extract : f.Label)));
+            var sources = formats.Select(f => f!).ToList();
+            var targets = _engine.Planner.CommonTargets(sources).ToList();
+
+            // Only offer subtitle formats when every video actually has a subtitle track.
+            if (targets.Any(t => t.Category == FormatCategory.Subtitle)
+                && sources.Any(f => f.Category == FormatCategory.Video)
+                && _engine.Registry.Converters.OfType<FfmpegConverter>().FirstOrDefault() is { } ffmpeg
+                && !files.Take(5).All(ffmpeg.HasSubtitles))
+            {
+                targets.RemoveAll(t => t.Category == FormatCategory.Subtitle);
+            }
+
+            var single = sources.Select(f => f.Id).Distinct().Count() == 1 ? sources[0].Id : null;
+            // Popular formats first (stable, so the rest keep the planner's order); same-format last.
+            targets = targets
+                .Where(f => f.Id != single)
+                .Select((f, i) => (f, i))
+                .OrderBy(x => Array.IndexOf(Popular, x.f.Id) >= 0 ? 0 : 1)
+                .ThenBy(x => Array.IndexOf(Popular, x.f.Id) is var p and >= 0 ? p : x.i)
+                .Select(x => x.f)
+                .ToList();
+            // Same format (shrink/compress) goes on the first page, after the top three.
+            if (single is not null && FormatCatalog.ById(single) is { } self
+                && _engine.Planner.CommonTargets(sources).Any(f => f.Id == single))
+            {
+                targets.Insert(Math.Min(3, targets.Count), self);
+            }
+            items.AddRange(targets.Select(f => new DonutItem(f.Id,
+                f.IsFolder ? Strings.Extract
+                : f.Id == single ? f.Label + " ↻"   // same format: resize/compress
+                : f.Label)));
         }
         if (items.All(i => i.Id != "zip"))
         {
@@ -198,7 +258,9 @@ public partial class MainWindow : Window
         }
 
         _pendingFiles = files;
-        Donut.Items = items;
+        _allItems = items;
+        _page = 0;
+        ShowPage();
         Donut.CenterText = files.Count == 1 ? Path.GetFileName(files[0].TrimEnd('/', '\\')) : Strings.FilesCount(files.Count);
         Donut.Highlighted = DonutMenu.NoIndex;
         PlaceDonut(at);
@@ -206,9 +268,41 @@ public partial class MainWindow : Window
 
         _pinned = pinned;
         Overlay.IsHitTestVisible = pinned;
+        _moreTimer.Stop();
         StatusText.Text = formats.Any(f => f is null)
             ? Strings.UnknownTypes
             : pinned ? Strings.ClickFormat : Strings.ReleaseOverFormat;
+    }
+
+    private int PageCount => _allItems.Count <= SlicesPerPage + 1 ? 1 : (int)Math.Ceiling(_allItems.Count / (double)SlicesPerPage);
+
+    /// <summary>Shows one page of the ring; with more than 12 formats, the last slice is "More ▸".</summary>
+    private void ShowPage()
+    {
+        if (PageCount == 1)
+        {
+            Donut.Items = _allItems;
+        }
+        else
+        {
+            var page = _allItems.Skip(_page * SlicesPerPage).Take(SlicesPerPage).ToList();
+            page.Add(new DonutItem(MoreId, Strings.More(_page + 1, PageCount)));
+            Donut.Items = page;
+        }
+        Donut.Highlighted = DonutMenu.NoIndex;
+    }
+
+    private void NextPage()
+    {
+        _page = (_page + 1) % PageCount;
+        ShowPage();
+    }
+
+    private void Pin()
+    {
+        _pinned = true;
+        Overlay.IsHitTestVisible = true;
+        StatusText.Text = Strings.ClickFormat;
     }
 
     private void PlaceDonut(Point center)
@@ -231,6 +325,7 @@ public partial class MainWindow : Window
 
     private void HideDonut()
     {
+        _moreTimer.Stop();
         Donut.IsVisible = false;
         _pinned = false;
         Overlay.IsHitTestVisible = false;
@@ -247,6 +342,12 @@ public partial class MainWindow : Window
     {
         if (!_pinned) return;
         var index = Donut.HitTest(e.GetPosition(Donut));
+        if (index >= 0 && Donut.Items[index].Id == MoreId)
+        {
+            NextPage();
+            Donut.Highlighted = index;
+            return;
+        }
         var files = _pendingFiles;
         HideDonut();
         if (index >= 0) await StartAsync(files, Donut.Items[index].Id);

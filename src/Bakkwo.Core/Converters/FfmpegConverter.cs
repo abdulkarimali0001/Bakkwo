@@ -6,25 +6,38 @@ using Bakkwo.Core.Conversion;
 namespace Bakkwo.Core.Converters;
 
 /// <summary>
-/// Audio and video through the FFmpeg command-line tool. Optional: if FFmpeg isn't installed,
-/// these edges simply don't appear in the graph and the app says how to install it.
+/// Audio, video and subtitles through the FFmpeg command-line tool. Optional: without FFmpeg these
+/// edges aren't in the graph and the app says how to install it.
+///
+/// FFmpeg builds differ (Homebrew's has no Vorbis or Theora encoder, for example), so the converter
+/// asks FFmpeg which encoders it has, picks a fallback where one exists (OGG → Opus) and leaves out
+/// targets it can't produce (OGV without Theora, AMR without opencore).
 /// </summary>
 public sealed partial class FfmpegConverter : ConverterBase
 {
-    private static readonly string[] Video = ["mp4", "mov", "mkv", "webm", "avi"];
-    private static readonly string[] Audio = ["mp3", "m4a", "wav", "flac", "ogg"];
+    private static readonly string[] VideoInputs = ["mp4", "mov", "mkv", "webm", "avi", "wmv", "flv", "mpeg", "ts", "3gp", "ogv", "vob"];
+    private static readonly string[] VideoOutputs = ["mp4", "mov", "mkv", "webm", "avi", "wmv", "flv", "mpeg", "ts", "3gp", "ogv"];
+    private static readonly string[] AudioFormats = ["mp3", "m4a", "alac", "aac", "wav", "flac", "ogg", "opus", "aiff", "wma", "amr"];
+    private static readonly string[] SubtitleFormats = ["srt", "vtt", "ass"];
+    private static readonly string[] SubtitleContainers = ["mp4", "mov", "mkv", "webm", "ts", "ogv"];
+
+    /// <summary>Encoders every normal FFmpeg build has; assumed when the encoder list can't be read.</summary>
+    private static readonly string[] CommonEncoders =
+        ["libx264", "mpeg4", "aac", "alac", "flac", "pcm_s16le", "pcm_s16be", "libmp3lame", "libopus", "libvpx-vp9",
+         "wmv2", "wmav2", "flv", "mpeg2video", "mp2", "gif", "srt", "webvtt", "ass"];
 
     private readonly Lazy<string?> _ffmpeg;
+    private readonly Lazy<IReadOnlySet<string>> _encoders;
 
-    public FfmpegConverter(string? ffmpegPath = null) =>
+    public FfmpegConverter(string? ffmpegPath = null, IEnumerable<string>? encoders = null)
+    {
         _ffmpeg = new Lazy<string?>(() => ffmpegPath is null
             ? FfmpegLocator.Find()
             : File.Exists(ffmpegPath) ? ffmpegPath : null);
+        _encoders = new Lazy<IReadOnlySet<string>>(() => encoders?.ToHashSet() ?? ReadEncoders(_ffmpeg.Value));
+    }
 
     public override string Name => "FFmpeg";
-
-    // FFmpeg already uses every core, so only a couple of media jobs at once.
-    public override int? MaxConcurrency => 2;
 
     public override bool IsAvailable => _ffmpeg.Value is not null;
 
@@ -32,22 +45,86 @@ public sealed partial class FfmpegConverter : ConverterBase
         ? null
         : "FFmpeg not found — install it (macOS: brew install ffmpeg) to convert audio and video.";
 
+    // FFmpeg already uses every core, so only a couple of media jobs at once.
+    public override int? MaxConcurrency => 2;
+
+    private bool Has(string encoder) => _encoders.Value.Contains(encoder);
+
+    /// <summary>Whether this FFmpeg can write <paramref name="target"/> at all.</summary>
+    public bool CanWrite(string target) => target switch
+    {
+        "ogv" => Has("libtheora") && (Has("libvorbis") || Has("vorbis")),
+        "ogg" => Has("libvorbis") || Has("libopus") || Has("vorbis"),
+        "opus" => Has("libopus") || Has("opus"),
+        "amr" => Has("libopencore_amrnb"),
+        "wmv" => Has("wmv2") && Has("wmav2"),
+        "wma" => Has("wmav2"),
+        "flv" => Has("flv"),
+        "mpeg" => Has("mpeg2video") && Has("mp2"),
+        "webm" => Has("libvpx-vp9") || Has("libvpx"),
+        _ => true,
+    };
+
     public override IEnumerable<ConversionEdge> Edges
     {
         get
         {
-            foreach (var from in Video)
+            foreach (var from in VideoInputs)
             {
-                foreach (var to in Video.Where(t => t != from)) yield return Edge(from, to);
-                foreach (var to in Audio) yield return Edge(from, to);
-                yield return Edge(from, "gif");
+                // Includes from == to: re-encode in the same format to shrink (Max size) or compress (Quality).
+                foreach (var to in VideoOutputs.Where(CanWrite)) yield return Edge(from, to);
+                foreach (var to in AudioFormats.Where(CanWrite)) yield return Edge(from, to);
+                yield return Edge(from, "gif", terminal: true); // an animated GIF, not a route to stills
+                // Subtitle tracks only live in some containers; the ring checks the actual file (HasSubtitles).
+                if (SubtitleContainers.Contains(from))
+                    foreach (var to in SubtitleFormats) yield return Edge(from, to);
             }
-            foreach (var from in Audio)
-            {
-                foreach (var to in Audio.Where(t => t != from)) yield return Edge(from, to);
-            }
+            foreach (var from in AudioFormats)
+                foreach (var to in AudioFormats.Where(t => t != from && CanWrite(t))) yield return Edge(from, to);
+            foreach (var from in SubtitleFormats)
+                foreach (var to in SubtitleFormats.Where(t => t != from)) yield return Edge(from, to);
             // No GIF → video edge: the planner would chain any still image through GIF into a "video".
         }
+    }
+
+    /// <summary>True if the file has at least one subtitle track (uses ffprobe next to ffmpeg).</summary>
+    public bool HasSubtitles(string path)
+    {
+        var ffprobe = FfprobePath();
+        if (ffprobe is null) return true; // can't tell; let the conversion explain if there are none
+        try
+        {
+            var info = new ProcessStartInfo(ffprobe)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            foreach (var arg in new[] { "-v", "error", "-select_streams", "s", "-show_entries", "stream=index", "-of", "csv=p=0", path })
+                info.ArgumentList.Add(arg);
+            using var process = Process.Start(info);
+            if (process is null) return true;
+            var output = process.StandardOutput.ReadToEnd();
+            if (!process.WaitForExit(5000))
+            {
+                process.Kill();
+                return true;
+            }
+            return output.Trim().Length > 0;
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return true;
+        }
+    }
+
+    private string? FfprobePath()
+    {
+        if (_ffmpeg.Value is not { } ffmpeg) return null;
+        var name = OperatingSystem.IsWindows() ? "ffprobe.exe" : "ffprobe";
+        var probe = Path.Combine(Path.GetDirectoryName(ffmpeg) ?? "", name);
+        return File.Exists(probe) ? probe : null;
     }
 
     public override async Task ConvertAsync(ConversionStep step, ConversionOptions options, IProgress<double>? progress, CancellationToken ct)
@@ -114,36 +191,118 @@ public sealed partial class FfmpegConverter : ConverterBase
         {
             string detail;
             lock (errorTail) detail = string.Join("\n", errorTail);
+            if (detail.Contains("matches no streams", StringComparison.Ordinal) && step.To.Category == Formats.FormatCategory.Subtitle)
+                throw new InvalidOperationException("This video has no subtitle track to extract.");
+            if (detail.Contains("does not contain any stream", StringComparison.Ordinal) && step.To.Category == Formats.FormatCategory.Audio)
+                throw new InvalidOperationException("This video has no sound to extract.");
             throw new InvalidOperationException($"FFmpeg failed (exit code {process.ExitCode}).\n{detail}");
         }
         progress?.Report(1);
     }
 
-    internal static IReadOnlyList<string> ArgumentsFor(string target, ConversionOptions options)
+    internal IReadOnlyList<string> ArgumentsFor(string target, ConversionOptions options)
     {
         // Quality 100 → CRF 18 (near-lossless), quality 10 → CRF 33 (small).
-        var crf = Math.Clamp((int)Math.Round(35 - Math.Clamp(options.Quality, 1, 100) * 0.17), 18, 34)
-            .ToString(CultureInfo.InvariantCulture);
-        var evenSize = new[] { "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2" }; // H.264 needs even dimensions
+        var quality = Math.Clamp(options.Quality, 1, 100);
+        var crf = Math.Clamp((int)Math.Round(35 - quality * 0.17), 18, 34).ToString(CultureInfo.InvariantCulture);
+        // -sn: subtitle tracks aren't copied into converted videos (bitmap subtitles can't go into MP4 and
+        // would fail the whole conversion); extracting them is a separate target (SRT/VTT/ASS).
+        var videoFilter = new List<string> { "-sn", "-vf", ScaleFilter(options.MaxDimension) };
+        var h264 = Has("libx264")
+            ? new[] { "-c:v", "libx264", "-preset", "medium", "-crf", crf, "-pix_fmt", "yuv420p" }
+            : new[] { "-c:v", "mpeg4", "-q:v", "4" };
+        var aac = new[] { "-c:a", "aac", "-b:a", "160k" };
+        var mp3Quality = quality >= 90 ? "0" : quality >= 60 ? "2" : "5"; // LAME VBR: 0 ≈ 245 kb/s, 2 ≈ 190, 5 ≈ 130
 
         return target switch
         {
-            "mp4" => [.. evenSize, "-c:v", "libx264", "-preset", "medium", "-crf", crf, "-pix_fmt", "yuv420p",
-                      "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart"],
-            "mov" => [.. evenSize, "-c:v", "libx264", "-crf", crf, "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k"],
-            "mkv" => [.. evenSize, "-c:v", "libx264", "-crf", crf, "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k"],
-            "webm" => ["-c:v", "libvpx-vp9", "-crf", crf, "-b:v", "0", "-c:a", "libopus", "-b:a", "128k"],
-            "avi" => ["-c:v", "mpeg4", "-q:v", "4", "-c:a", "libmp3lame", "-q:a", "3"],
-            "gif" => ["-an", "-vf", "fps=12,scale='min(480,iw)':-2:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse",
+            // ---------------------------------------------------------------- video
+            "mp4" => [.. videoFilter, .. h264, .. aac, "-movflags", "+faststart"],
+            "mov" => [.. videoFilter, .. h264, .. aac],
+            "mkv" => [.. videoFilter, .. h264, .. aac],
+            "ts" => [.. videoFilter, .. h264, .. aac, "-f", "mpegts"],
+            "webm" => [.. videoFilter, "-c:v", Has("libvpx-vp9") ? "libvpx-vp9" : "libvpx", "-crf", crf, "-b:v", "0",
+                       .. OpusOrVorbis()],
+            "avi" => [.. videoFilter, "-c:v", "mpeg4", "-q:v", "4", .. Mp3OrAac(mp3Quality)],
+            "wmv" => [.. videoFilter, "-c:v", "wmv2", "-q:v", "4", "-c:a", "wmav2", "-b:a", "160k"],
+            "flv" => [.. videoFilter, "-c:v", "flv", "-q:v", "4", .. Mp3OrAac(mp3Quality), "-ar", "44100"],
+            "mpeg" => [.. videoFilter, "-c:v", "mpeg2video", "-q:v", "3", "-c:a", "mp2", "-b:a", "192k", "-f", "mpeg"],
+            "3gp" => ["-sn", "-vf", ScaleFilter(Math.Min(options.MaxDimension ?? 640, 640)),
+                      .. (Has("libx264") ? new[] { "-c:v", "libx264", "-profile:v", "baseline", "-level", "3.0", "-crf", crf, "-pix_fmt", "yuv420p" } : h264),
+                      "-c:a", "aac", "-b:a", "64k", "-ac", "1", "-ar", "22050"],
+            "ogv" => [.. videoFilter, "-c:v", "libtheora", "-q:v", "7", .. VorbisOrOpus()],
+            "gif" => ["-an", "-sn", "-vf", $"fps=12,scale='min({Math.Min(options.MaxDimension ?? 480, 480)},iw)':-2:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse",
                       "-loop", "0"],
-            "mp3" => ["-vn", "-c:a", "libmp3lame", "-q:a", "2"],
+
+            // ---------------------------------------------------------------- audio
+            "mp3" => ["-vn", "-c:a", "libmp3lame", "-q:a", mp3Quality],
             "m4a" => ["-vn", "-c:a", "aac", "-b:a", "192k"],
+            "alac" => ["-vn", "-c:a", "alac", "-f", "ipod"],
+            "aac" => ["-vn", "-c:a", "aac", "-b:a", "192k", "-f", "adts"],
             "wav" => ["-vn", "-c:a", "pcm_s16le"],
             "flac" => ["-vn", "-c:a", "flac"],
-            "ogg" => ["-vn", "-c:a", "libvorbis", "-q:a", "5"],
+            "aiff" => ["-vn", "-c:a", "pcm_s16be", "-f", "aiff"],
+            "ogg" => ["-vn", .. VorbisOrOpus(), "-f", "ogg"],
+            "opus" => ["-vn", "-c:a", Has("libopus") ? "libopus" : "opus", "-b:a", "128k", .. (Has("libopus") ? Array.Empty<string>() : ["-strict", "-2"]), "-f", "opus"],
+            "wma" => ["-vn", "-c:a", "wmav2", "-b:a", "192k", "-f", "asf"],
+            "amr" => ["-vn", "-c:a", "libopencore_amrnb", "-ar", "8000", "-ac", "1", "-b:a", "12.2k"],
+
+            // ---------------------------------------------------------------- subtitles (first subtitle track)
+            "srt" => ["-map", "0:s:0", "-c:s", "srt"],
+            "vtt" => ["-map", "0:s:0", "-c:s", "webvtt", "-f", "webvtt"],
+            "ass" => ["-map", "0:s:0", "-c:s", "ass"],
+
             _ => throw new NotSupportedException($"FFmpeg target {target} is not configured."),
         };
     }
+
+    /// <summary>Shrinks so neither side exceeds <paramref name="max"/> (never enlarges) and keeps sizes even, which H.264 needs.</summary>
+    private static string ScaleFilter(int? max) => max is int m and > 0
+        ? $"scale='min({m},iw)':'min({m},ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2"
+        : "scale=trunc(iw/2)*2:trunc(ih/2)*2";
+
+    private string[] OpusOrVorbis() => Has("libopus")
+        ? ["-c:a", "libopus", "-b:a", "128k"]
+        : Has("libvorbis") ? ["-c:a", "libvorbis", "-q:a", "5"] : ["-c:a", "vorbis", "-strict", "-2", "-ac", "2"];
+
+    private string[] VorbisOrOpus() => Has("libvorbis")
+        ? ["-c:a", "libvorbis", "-q:a", "5"]
+        : Has("libopus") ? ["-c:a", "libopus", "-b:a", "128k"] : ["-c:a", "vorbis", "-strict", "-2", "-ac", "2"];
+
+    private string[] Mp3OrAac(string mp3Quality) => Has("libmp3lame")
+        ? ["-c:a", "libmp3lame", "-q:a", mp3Quality]
+        : ["-c:a", "aac", "-b:a", "160k"];
+
+    /// <summary>Runs "ffmpeg -encoders" once and returns the encoder names.</summary>
+    private static IReadOnlySet<string> ReadEncoders(string? ffmpeg)
+    {
+        if (ffmpeg is null) return new HashSet<string>();
+        try
+        {
+            var info = new ProcessStartInfo(ffmpeg)
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+            };
+            info.ArgumentList.Add("-hide_banner");
+            info.ArgumentList.Add("-encoders");
+            using var process = Process.Start(info);
+            if (process is null) return CommonEncoders.ToHashSet();
+            var output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit(5000);
+            var names = EncoderLine().Matches(output).Select(m => m.Groups[1].Value).ToHashSet();
+            return names.Count > 0 ? names : CommonEncoders.ToHashSet();
+        }
+        catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
+        {
+            return CommonEncoders.ToHashSet();
+        }
+    }
+
+    [GeneratedRegex(@"^\s*[VAS][F.][S.][X.][B.][D.]\s+(\S+)", RegexOptions.Multiline)]
+    private static partial Regex EncoderLine();
 
     [GeneratedRegex(@"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)")]
     private static partial Regex DurationPattern();

@@ -23,6 +23,8 @@ files appear next to the originals. Nothing is uploaded anywhere.
   the cheapest chain, so YAML → CSV works via JSON and Markdown → text works via HTML, without a
   converter written for each pair.
 - **Parallel batches** with per-file progress; output names never overwrite anything (`photo (1).webp`).
+- **Shrink without changing format**: pick the file's own format (marked ↻) with a Max size to get
+  `clip (720p).mp4` or a smaller photo. The ring shows popular formats first and pages the rest (More ▸).
 - **Image options**: quality, maximum size and grayscale. EXIF rotation is applied automatically.
 - **Word documents**: a built-in DOCX reader and writer (Open XML SDK) keeps headings, lists, tables,
   links, code and pictures, and understands documents from Korean Word. LibreOffice, when installed,
@@ -48,10 +50,13 @@ files appear next to the originals. Nothing is uploaded anywhere.
 | **Data**: JSON, YAML, CSV, TSV, XML | each other |
 | **Text**: Markdown, HTML, TXT | HTML, TXT |
 | **Archives**: ZIP, TAR, TAR.GZ | each other, extract to a folder; any files or folders → one ZIP |
-| **Video**¹: MP4, MOV, MKV, WebM, AVI | each other, GIF, MP3, M4A, WAV, FLAC, OGG |
-| **Audio**¹: MP3, M4A, WAV, FLAC, OGG | each other |
+| **Video**¹: MP4, MOV (incl. iPhone HEVC), MKV, WebM, AVI, WMV, FLV, MPEG, TS, 3GP, OGV, VOB | each other, animated GIF, any audio format; same format smaller (4K / 1080p / 720p) |
+| **Audio**¹: MP3, M4A, Apple Lossless, AAC, WAV, FLAC, OGG, Opus, AIFF, WMA, AMR | each other |
+| **Subtitles**¹: SRT, WebVTT, ASS/SSA, or the subtitle track inside MKV/MP4/MOV/WebM/TS | SRT, WebVTT, ASS |
 
-¹ Needs [FFmpeg](https://ffmpeg.org) (`brew install ffmpeg`).
+¹ Needs [FFmpeg](https://ffmpeg.org) (`brew install ffmpeg`). Bakkwo asks FFmpeg which encoders it has and
+falls back where it can (OGG → Opus when there's no Vorbis encoder, as in Homebrew's build) or hides what that
+build can't write (AMR, OGV).
 ² Needs [LibreOffice](https://www.libreoffice.org) (`brew install --cask libreoffice`) for an exact-layout PDF and
 the older formats. DOCX ↔ Markdown/text/HTML is built in and needs nothing else.
 
@@ -66,7 +71,7 @@ On macOS: `brew install --cask dotnet-sdk`, or download the Arm64 installer for 
 git clone https://github.com/<your-username>/Bakkwo.git
 cd Bakkwo
 dotnet run --project src/Bakkwo.App      # the desktop app
-dotnet test                              # the test suite (54 tests)
+dotnet test                              # the test suite (72 tests)
 ```
 
 On macOS you can also double-click `build.command` to run the tests and save the output to

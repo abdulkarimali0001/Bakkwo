@@ -23,8 +23,7 @@ public sealed class ImageConverter : ConverterBase
     public override IEnumerable<ConversionEdge> Edges =>
         from f in Readable
         from t in Writable
-        where f != t
-        select Edge(f, t);
+        select Edge(f, t); // includes f == t: resize or recompress in the same format
 
     public override async Task ConvertAsync(ConversionStep step, ConversionOptions options, IProgress<double>? progress, CancellationToken ct)
     {

@@ -74,6 +74,7 @@ public static class Strings
     public static string FilesCount(int count) => T($"{count} files", $"파일 {count}개");
     public static string ZipAll => T("ZIP all", "모두 ZIP");
     public static string Extract => T("Extract", "풀기");
+    public static string More(int page, int pages) => T($"More ▸ {page}/{pages}", $"더보기 ▸ {page}/{pages}");
 
     // Status line
     public static string Ready => T("Ready.", "준비됐어요.");

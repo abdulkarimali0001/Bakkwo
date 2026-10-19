@@ -19,8 +19,11 @@ public sealed record ConversionOptions
     public static ConversionOptions Default { get; } = new();
 }
 
-/// <summary>One hop in the format graph, e.g. yaml → json, served by one converter.</summary>
-public sealed record ConversionEdge(string From, string To, IConverter Converter, int Cost = 1)
+/// <summary>
+/// One hop in the format graph, e.g. yaml → json, served by one converter. A <paramref name="Terminal"/>
+/// edge ends a route: the planner won't chain further from its result (video → GIF → PNG makes no sense).
+/// </summary>
+public sealed record ConversionEdge(string From, string To, IConverter Converter, int Cost = 1, bool Terminal = false)
 {
     public override string ToString() => $"{From}→{To} ({Converter.Name})";
 }
@@ -59,7 +62,7 @@ public abstract class ConverterBase : IConverter
 
     public abstract Task ConvertAsync(ConversionStep step, ConversionOptions options, IProgress<double>? progress, CancellationToken ct);
 
-    protected ConversionEdge Edge(string from, string to, int cost = 1) => new(from, to, this, cost);
+    protected ConversionEdge Edge(string from, string to, int cost = 1, bool terminal = false) => new(from, to, this, cost, terminal);
 }
 
 public sealed record ConversionResult(

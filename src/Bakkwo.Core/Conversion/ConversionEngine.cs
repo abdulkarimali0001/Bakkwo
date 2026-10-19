@@ -40,7 +40,9 @@ public sealed class ConversionEngine
             route = Planner.FindRoute(from, target)
                 ?? throw new NotSupportedException($"Can't convert {from.DisplayName} to {target.DisplayName}.");
 
-            finalOutput = OutputPaths.Reserve(inputPath, target, options);
+            // Same format (shrink/compress): "clip (720p).mp4", never next to an identically named file.
+            var stem = from.Id == target.Id ? $"{FormatCatalog.StemOf(inputPath)} ({SameFormatSuffix(options)})" : null;
+            finalOutput = OutputPaths.Reserve(inputPath, target, options, stem);
 
             var current = inputPath;
             var currentFormat = from;
@@ -128,6 +130,15 @@ public sealed class ConversionEngine
         await Task.WhenAll(tasks);
         return results;
     }
+
+    internal static string SameFormatSuffix(ConversionOptions options) => options.MaxDimension switch
+    {
+        3840 => "4K",
+        1920 => "1080p",
+        1280 => "720p",
+        int px when px > 0 => $"{px}px",
+        _ => "compressed",
+    };
 
     internal static string CreateTempDir()
     {

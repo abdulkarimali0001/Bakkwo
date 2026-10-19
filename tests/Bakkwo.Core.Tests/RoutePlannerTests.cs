@@ -42,7 +42,7 @@ public class RoutePlannerTests
     public void Impossible_route_is_null()
     {
         Assert.Null(Planner.FindRoute(F("pdf"), F("jpg")));
-        Assert.Null(Planner.FindRoute(F("png"), F("png")));
+        Assert.Null(Planner.FindRoute(F("json"), F("json"))); // nothing re-encodes JSON in place
     }
 
     [Fact]
@@ -61,7 +61,15 @@ public class RoutePlannerTests
         Assert.Contains("webp", common);
         Assert.Contains("pdf", common);
         Assert.DoesNotContain("json", common);
-        Assert.DoesNotContain("png", common); // png can't become png
+        Assert.DoesNotContain("png", common); // same-format re-encoding is only offered when all files share it
+    }
+
+    [Fact]
+    public void Same_format_is_offered_for_resizing_images()
+    {
+        Assert.Single(Planner.FindRoute(F("png"), F("png"))!);
+        var targets = Planner.CommonTargets([F("png"), F("png")]);
+        Assert.Equal("png", targets[^1].Id);
     }
 
     [Fact]

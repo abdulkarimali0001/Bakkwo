@@ -4,6 +4,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Bakkwo.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!--
       3.1.x is the last ImageSharp line that needs no licence key to build. ImageSharp 4 makes
       Release builds fail without a Six Labors key, which every contributor would need.

@@ -41,17 +41,35 @@ public static class FormatCatalog
 
         // Video (needs FFmpeg)
         new("mp4", "MP4 video", Video, [".mp4", ".m4v"]),
-        new("mov", "QuickTime video", Video, [".mov"]),
+        new("mov", "QuickTime video", Video, [".mov", ".qt"]),
         new("mkv", "Matroska video", Video, [".mkv"]),
         new("webm", "WebM video", Video, [".webm"]),
         new("avi", "AVI video", Video, [".avi"]),
+        new("wmv", "Windows Media video", Video, [".wmv", ".asf"]),
+        new("flv", "Flash video", Video, [".flv"]),
+        new("mpeg", "MPEG video", Video, [".mpg", ".mpeg", ".m2v"]),
+        new("ts", "MPEG transport stream", Video, [".ts", ".mts", ".m2ts"]),
+        new("3gp", "3GPP mobile video", Video, [".3gp", ".3g2"]),
+        new("ogv", "Ogg Theora video", Video, [".ogv"]),
+        new("vob", "DVD video", Video, [".vob"]),
 
         // Audio (needs FFmpeg)
         new("mp3", "MP3 audio", Audio, [".mp3"]),
-        new("m4a", "AAC audio", Audio, [".m4a"]),
+        new("m4a", "AAC audio (M4A)", Audio, [".m4a"]),
+        new("alac", "Apple Lossless", Audio, [".m4a"]),   // written as .m4a; files named .m4a are detected as m4a
+        new("aac", "AAC audio", Audio, [".aac"]),
         new("wav", "WAV audio", Audio, [".wav"]),
         new("flac", "FLAC audio", Audio, [".flac"]),
-        new("ogg", "Ogg Vorbis audio", Audio, [".ogg"]),
+        new("ogg", "Ogg audio", Audio, [".ogg", ".oga"]),
+        new("opus", "Opus audio", Audio, [".opus"]),
+        new("aiff", "AIFF audio", Audio, [".aiff", ".aif"]),
+        new("wma", "Windows Media audio", Audio, [".wma"]),
+        new("amr", "AMR voice recording", Audio, [".amr"]),
+
+        // Subtitles (needs FFmpeg)
+        new("srt", "SubRip subtitles", Subtitle, [".srt"]),
+        new("vtt", "WebVTT subtitles", Subtitle, [".vtt"]),
+        new("ass", "ASS subtitles", Subtitle, [".ass", ".ssa"]),
 
         // Archives
         new("zip", "ZIP archive", Archive, [".zip"]),
@@ -71,6 +89,12 @@ public static class FormatCatalog
         ["text"] = "txt",
         ["tar.gz"] = "tgz",
         ["m4v"] = "mp4",
+        ["mpg"] = "mpeg",
+        ["m2ts"] = "ts",
+        ["mts"] = "ts",
+        ["aif"] = "aiff",
+        ["webvtt"] = "vtt",
+        ["ssa"] = "ass",
         ["dir"] = "folder",
     };
 
@@ -104,7 +128,23 @@ public static class FormatCatalog
                 }
             }
         }
+        // ".ts" is also TypeScript. MPEG-TS packets start with the sync byte 0x47.
+        if (best?.Id == "ts" && name.EndsWith(".ts", StringComparison.Ordinal) && !LooksLikeTransportStream(path)) return null;
         return best;
+    }
+
+    private static bool LooksLikeTransportStream(string path)
+    {
+        try
+        {
+            if (!File.Exists(path)) return true; // name-only detection (CLI targets, tests)
+            using var stream = File.OpenRead(path);
+            return stream.ReadByte() == 0x47;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
     }
 
     /// <summary>The file name without its (possibly double) extension: "logs.tar.gz" → "logs".</summary>

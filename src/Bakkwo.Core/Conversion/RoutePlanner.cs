@@ -16,7 +16,8 @@ public sealed class RoutePlanner(ConverterRegistry registry)
 
     public IReadOnlyList<ConversionEdge>? FindRoute(FileFormat from, FileFormat to)
     {
-        if (from.Id == to.Id) return null;
+        // Same format: only a converter that re-encodes in place (resize/compress) can do it.
+        if (from.Id == to.Id) return SelfEdge(from.Id) is { } self ? [self] : null;
 
         var visits = Explore(from.Id);
         if (!visits.ContainsKey(to.Id)) return null;
@@ -32,6 +33,11 @@ public sealed class RoutePlanner(ConverterRegistry registry)
         return route;
     }
 
+    /// <summary>A converter edge from a format to itself (re-encode to resize or compress), if any.</summary>
+    public ConversionEdge? SelfEdge(string format) =>
+        registry.Converters.Where(c => c.IsAvailable).SelectMany(c => c.Edges)
+            .FirstOrDefault(e => e.From == format && e.To == format);
+
     /// <summary>Every format reachable from <paramref name="from"/>, same-category formats first.</summary>
     public IReadOnlyList<FileFormat> TargetsFor(FileFormat from)
     {
@@ -39,7 +45,7 @@ public sealed class RoutePlanner(ConverterRegistry registry)
         var order = FormatCatalog.All.Select((f, i) => (f.Id, i)).ToDictionary(x => x.Id, x => x.i);
 
         return visits
-            .Where(kv => kv.Key != from.Id)
+            .Where(kv => kv.Key != from.Id) // same-format re-encoding is offered by CommonTargets
             .Select(kv => (Format: FormatCatalog.ById(kv.Key), kv.Value.Cost))
             .Where(x => x.Format is not null)
             .OrderBy(x => x.Format!.Category == from.Category ? 0 : 1)
@@ -61,6 +67,8 @@ public sealed class RoutePlanner(ConverterRegistry registry)
             var reachable = TargetsFor(other).Select(f => f.Id).ToHashSet();
             result.RemoveAll(f => !reachable.Contains(f.Id));
         }
+        // All files share one format that can be re-encoded in place (shrink a video, recompress a photo).
+        if (distinct.Count == 1 && SelfEdge(distinct[0].Id) is not null) result.Add(distinct[0]);
         return result;
     }
 
@@ -81,6 +89,7 @@ public sealed class RoutePlanner(ConverterRegistry registry)
             var current = visits[node];
             if (priority != (current.Cost, current.Steps)) continue; // stale queue entry
             if (current.Steps >= MaxSteps) continue;
+            if (current.Via?.Terminal == true) continue;
             if (!graph.TryGetValue(node, out var edges)) continue;
 
             foreach (var edge in edges)

@@ -8,6 +8,7 @@ public enum FormatCategory
     Text,
     Video,
     Audio,
+    Subtitle,
     Archive,
     Folder,
 }

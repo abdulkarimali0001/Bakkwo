@@ -80,3 +80,13 @@ The ring, the CLI and multi-step routes (`abc → json → csv`) work immediatel
 with a private profile per concurrent job. Its edges cost 2, so the planner prefers the built-in
 route when both exist (DOCX → Markdown) and uses LibreOffice only where it's needed (DOCX → PDF,
 DOC → DOCX → Markdown).
+
+## Audio, video and subtitles
+
+`FfmpegConverter` runs `ffmpeg -encoders` once and only offers targets that build can write,
+choosing fallbacks where possible (OGG uses Vorbis, else Opus). Video → GIF edges are *terminal*: the
+planner never chains from them, so a video can't wander into still-image formats via GIF. Converting
+a format to itself (a self edge) re-encodes it to shrink or compress, and the result is named
+`name (720p).ext` / `name (compressed).ext`. Subtitle targets are offered in the ring only when
+`ffprobe` finds a subtitle track. `.ts` files are checked for the MPEG-TS sync byte so TypeScript
+sources aren't mistaken for video.
