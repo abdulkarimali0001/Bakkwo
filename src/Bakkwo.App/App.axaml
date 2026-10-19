@@ -6,13 +6,5 @@
   <Application.Styles>
     <FluentTheme />
   </Application.Styles>
-
-  <!-- On macOS this becomes the app menu next to the Apple menu ("Bakkwo" ▸ About / Quit). -->
-  <NativeMenu.Menu>
-    <NativeMenu>
-      <NativeMenuItem Header="About Bakkwo" />
-      <NativeMenuItemSeparator />
-      <NativeMenuItem Header="Quit Bakkwo" Gesture="Cmd+Q" />
-    </NativeMenu>
-  </NativeMenu.Menu>
+  <!-- The macOS app menu (About / Quit) is built once in App.axaml.cs, in the startup language. -->
 </Application>

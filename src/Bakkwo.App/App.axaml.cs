@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 using Bakkwo.App.Localization;
@@ -42,28 +43,25 @@ public partial class App : Application
         }
 
         SetUpAppMenu();
-        Strings.LanguageChanged += SetUpAppMenu;
         base.OnFrameworkInitializationCompleted();
     }
 
+    /// <summary>
+    /// Builds the macOS app menu once, in the startup language. Renaming items later makes Avalonia
+    /// append the menu again instead of replacing it, so the menu follows the language on next launch.
+    /// </summary>
     private void SetUpAppMenu()
     {
-        if (NativeMenu.GetMenu(this) is not { } menu) return;
-        foreach (var item in menu.Items.OfType<NativeMenuItem>())
-        {
-            if (item.Gesture is null)
-            {
-                item.Header = Strings.About;
-                item.Click -= OnAboutClick;
-                item.Click += OnAboutClick;
-            }
-            else
-            {
-                item.Header = Strings.Quit;
-                item.Click -= OnQuitClick;
-                item.Click += OnQuitClick;
-            }
-        }
+        var about = new NativeMenuItem(Strings.About);
+        about.Click += OnAboutClick;
+        var quit = new NativeMenuItem(Strings.Quit) { Gesture = KeyGesture.Parse("Cmd+Q") };
+        quit.Click += OnQuitClick;
+
+        var menu = new NativeMenu();
+        menu.Items.Add(about);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(quit);
+        NativeMenu.SetMenu(this, menu);
     }
 
     private void OnAboutClick(object? sender, EventArgs e) => _main?.ShowAbout();

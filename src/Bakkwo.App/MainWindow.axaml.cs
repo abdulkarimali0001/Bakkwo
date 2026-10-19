@@ -78,6 +78,10 @@ public partial class MainWindow : Window
         QualityCaption.Text = Strings.Quality;
         MaxSizeCaption.Text = Strings.MaxSize;
         OriginalItem.Content = Strings.Original;
+        // A ComboBox shows a snapshot of the selected item; reselect so "Original/원본" updates.
+        var selected = MaxSizeBox.SelectedIndex;
+        MaxSizeBox.SelectedIndex = -1;
+        MaxSizeBox.SelectedIndex = selected;
         GrayscaleBox.Content = Strings.Grayscale;
         DropTitle.Text = Strings.DropTitle;
         DropHint.Text = Strings.DropHint;
