@@ -4,7 +4,8 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
-using Bakkwo.App.Localization;
+using Bakkwo.UI;
+using Bakkwo.UI.Localization;
 
 namespace Bakkwo.App;
 

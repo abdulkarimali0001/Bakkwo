@@ -1,6 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:controls="using:Bakkwo.App.Controls"
+        xmlns:controls="using:Bakkwo.UI.Controls"
         x:Class="Bakkwo.App.MainWindow"
         Title="바꿔 Bakkwo"
         Icon="/Assets/icon-256.png"

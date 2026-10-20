@@ -4,7 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Styling;
 
-namespace Bakkwo.App.Controls;
+namespace Bakkwo.UI.Controls;
 
 /// <summary>A slice: <see cref="Label"/> in bold, a small <see cref="Caption"/> under it, and a <see cref="Hint"/> shown in the middle on hover.</summary>
 public sealed record DonutItem(string Id, string Label, string? Caption = null, string? Hint = null, bool Special = false);

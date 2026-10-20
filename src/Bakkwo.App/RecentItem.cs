@@ -2,7 +2,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using Bakkwo.App.Localization;
+using Bakkwo.UI;
+using Bakkwo.UI.Localization;
 
 namespace Bakkwo.App;
 

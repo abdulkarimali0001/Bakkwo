@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- UI pieces shared by the desktop app and the phone app: the ring, the texts, the ring's choices and settings. -->
+  <PropertyGroup>
+    <RootNamespace>Bakkwo.UI</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bakkwo.Core\Bakkwo.Core.csproj" />
+  </ItemGroup>
+</Project>

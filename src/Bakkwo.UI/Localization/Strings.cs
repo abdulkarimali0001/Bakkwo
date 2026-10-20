@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Bakkwo.App.Localization;
+namespace Bakkwo.UI.Localization;
 
 public enum AppLanguage
 {
@@ -158,4 +158,30 @@ public static class Strings
     public static string Inspired => T("Ring idea inspired by Filee (MIT).", "링 아이디어는 Filee(MIT)에서 영감을 받았어요.");
     public static string Close => T("Close", "닫기");
     public static string Quit => T("Quit Bakkwo", "바꿔 종료");
+
+    // Phone app
+    public static string PhoneSubtitle => T(
+        "Pick files and choose a format. Everything stays on your phone.",
+        "파일을 고르고 형식을 선택하세요. 모든 변환은 내 휴대폰 안에서만 이루어집니다.");
+    public static string PhonePickTitle => T("Convert files", "파일 변환하기");
+    public static string PhonePickHint => T(
+        "Or share files to 바꿔 from Gallery, My Files or any other app.",
+        "갤러리, 내 파일 등 다른 앱에서 바꿔로 공유해도 돼요.");
+    public static string PhoneTapFormat => T(
+        "Tap a format, or slide your finger around the ring and let go on one.",
+        "형식을 누르세요. 링 위로 손가락을 움직이다 원하는 형식에서 떼도 돼요.");
+    public static string PhoneOptions => T("Options", "옵션");
+    public static string PhoneEmpty => T("Converted files appear here.", "변환한 파일이 여기에 표시돼요.");
+    public static string PhoneOpening => T("Opening files…", "파일 여는 중…");
+    public static string PhoneReady(string name, string via, double seconds) => IsKorean
+        ? $"{name}{(via.Length > 0 ? $" ({via} 경유)" : "")} · {seconds:0.0}초"
+        : $"{name}{(via.Length > 0 ? $" (via {via})" : "")} · {seconds:0.0}s";
+    public static string Save => T("Save", "저장");
+    public static string Share => T("Share", "공유");
+    public static string SavedTo(string place) => T($"Saved to {place}", $"{place}에 저장됨");
+    public static string SaveFailed(string error) => T("Couldn't save: ", "저장하지 못했어요: ") + error;
+    public static string ClearList => T("Clear", "지우기");
+    public static string PhoneLimits => T(
+        "On phones: photos (including HEIC), PDF, Word, text, data, ZIP, and video → M4A audio. Other video and audio, and Word → PDF, need the computer version.",
+        "휴대폰에서는 사진(HEIC 포함), PDF, Word, 텍스트, 데이터, ZIP, 그리고 영상 → M4A 오디오 변환을 할 수 있어요. 다른 영상·오디오 변환과 Word → PDF는 컴퓨터 버전에서 하세요.");
 }

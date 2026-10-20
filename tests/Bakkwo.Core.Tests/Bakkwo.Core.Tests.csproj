@@ -13,5 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bakkwo.Core\Bakkwo.Core.csproj" />
+    <ProjectReference Include="..\..\src\Bakkwo.UI\Bakkwo.UI.csproj" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The phone screen, shared by the Android app (and a future iPhone app). -->
+  <PropertyGroup>
+    <RootNamespace>Bakkwo.Mobile</RootNamespace>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\icon-256.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bakkwo.Core\Bakkwo.Core.csproj" />
+    <ProjectReference Include="..\Bakkwo.UI\Bakkwo.UI.csproj" />
+  </ItemGroup>
+</Project>

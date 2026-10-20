@@ -1,7 +1,8 @@
 using System.Text.Json;
-using Bakkwo.App.Localization;
+using Bakkwo.UI;
+using Bakkwo.UI.Localization;
 
-namespace Bakkwo.App;
+namespace Bakkwo.UI;
 
 /// <summary>A few preferences, kept in a small JSON file in the user's app-data folder.</summary>
 public sealed class Settings

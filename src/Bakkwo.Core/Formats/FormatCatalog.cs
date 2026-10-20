@@ -16,6 +16,9 @@ public static class FormatCatalog
         new("tiff", "TIFF image", Image, [".tiff", ".tif"]),
         new("tga", "Targa image", Image, [".tga"]),
         new("ico", "Windows icon", Image, [".ico"]),
+        // Phone photos. Read by the phone app's system decoder; the desktop app can only zip them for now.
+        new("heic", "HEIC photo", Image, [".heic", ".heif", ".hif"]),
+        new("avif", "AVIF image", Image, [".avif"]),
 
         // Documents
         new("pdf", "PDF document", Document, [".pdf"]),

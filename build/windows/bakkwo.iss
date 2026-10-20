@@ -1,5 +1,5 @@
 ﻿; Inno Setup script for the Windows installer of 바꿔 Bakkwo.
-; Built by .github/workflows/release.yml:  iscc /DAppVersion=0.5.0 build\windows\bakkwo.iss
+; Built by .github/workflows/release.yml:  iscc /DAppVersion=0.6.0 build\windows\bakkwo.iss
 ; Expects the published app in publish\Bakkwo-win-x64\.
 ; Installs per user by default (no admin prompt); offers all users when run as admin.
 

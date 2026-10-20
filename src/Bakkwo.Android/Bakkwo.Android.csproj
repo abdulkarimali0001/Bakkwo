@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Android app. Build an installable APK with:  ./build/package-android.sh -->
+  <PropertyGroup>
+    <TargetFramework>net8.0-android</TargetFramework>
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Bakkwo.Android</RootNamespace>
+    <AssemblyName>Bakkwo.Android</AssemblyName>
+
+    <ApplicationId>io.github.abdulkarimali0001.bakkwo</ApplicationId>
+    <ApplicationTitle>바꿔</ApplicationTitle>
+    <!-- Must go up by one for every release, or phones refuse the update. -->
+    <ApplicationVersion>6</ApplicationVersion>
+    <ApplicationDisplayVersion>$(Version)</ApplicationDisplayVersion>
+
+    <AndroidPackageFormat>apk</AndroidPackageFormat>
+    <!-- Nearly every phone is 64-bit ARM; 32-bit ARM covers older ones. -->
+    <RuntimeIdentifiers>android-arm64;android-arm</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <!--
+    Only the framework is trimmed. YamlDotNet, the Open XML SDK and ImageSharp use reflection,
+    so our own and third-party assemblies are kept whole.
+  -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <TrimMode>partial</TrimMode>
+  </PropertyGroup>
+  <ItemGroup>
+    <TrimmerRootAssembly Include="Bakkwo.Core" RootMode="All" />
+    <TrimmerRootAssembly Include="YamlDotNet" RootMode="All" />
+    <TrimmerRootAssembly Include="DocumentFormat.OpenXml" RootMode="All" />
+    <TrimmerRootAssembly Include="DocumentFormat.OpenXml.Framework" RootMode="All" />
+    <TrimmerRootAssembly Include="SixLabors.ImageSharp" RootMode="All" />
+    <TrimmerRootAssembly Include="Markdig" RootMode="All" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Android" Version="11.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bakkwo.Mobile\Bakkwo.Mobile.csproj" />
+  </ItemGroup>
+</Project>

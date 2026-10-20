@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -9,6 +9,14 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bakkwo.Cli", "src\Bakkwo.Cli\Bakkwo.Cli.csproj", "{6B1C3E2A-1D4F-4C2B-9E61-3F0A8D7C5B03}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bakkwo.Core.Tests", "tests\Bakkwo.Core.Tests\Bakkwo.Core.Tests.csproj", "{6B1C3E2A-1D4F-4C2B-9E61-3F0A8D7C5B04}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DD3EADCD-2310-480D-BFD9-1D744A56538E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bakkwo.UI", "src\Bakkwo.UI\Bakkwo.UI.csproj", "{0DB72E9A-9FC3-484C-AC2D-A9EA6456ECBF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bakkwo.Mobile", "src\Bakkwo.Mobile\Bakkwo.Mobile.csproj", "{24A32CF7-3221-4913-88FA-7244E5C67230}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bakkwo.Mobile.Desktop", "src\Bakkwo.Mobile.Desktop\Bakkwo.Mobile.Desktop.csproj", "{0F4A7E61-939C-4C6A-AB10-796AA7355EB4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -32,5 +40,22 @@ Global
 		{6B1C3E2A-1D4F-4C2B-9E61-3F0A8D7C5B04}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6B1C3E2A-1D4F-4C2B-9E61-3F0A8D7C5B04}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6B1C3E2A-1D4F-4C2B-9E61-3F0A8D7C5B04}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0DB72E9A-9FC3-484C-AC2D-A9EA6456ECBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0DB72E9A-9FC3-484C-AC2D-A9EA6456ECBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0DB72E9A-9FC3-484C-AC2D-A9EA6456ECBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0DB72E9A-9FC3-484C-AC2D-A9EA6456ECBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24A32CF7-3221-4913-88FA-7244E5C67230}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24A32CF7-3221-4913-88FA-7244E5C67230}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24A32CF7-3221-4913-88FA-7244E5C67230}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24A32CF7-3221-4913-88FA-7244E5C67230}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F4A7E61-939C-4C6A-AB10-796AA7355EB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F4A7E61-939C-4C6A-AB10-796AA7355EB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F4A7E61-939C-4C6A-AB10-796AA7355EB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F4A7E61-939C-4C6A-AB10-796AA7355EB4}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{0DB72E9A-9FC3-484C-AC2D-A9EA6456ECBF} = {DD3EADCD-2310-480D-BFD9-1D744A56538E}
+		{24A32CF7-3221-4913-88FA-7244E5C67230} = {DD3EADCD-2310-480D-BFD9-1D744A56538E}
+		{0F4A7E61-939C-4C6A-AB10-796AA7355EB4} = {DD3EADCD-2310-480D-BFD9-1D744A56538E}
 	EndGlobalSection
 EndGlobal

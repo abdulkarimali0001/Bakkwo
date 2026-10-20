@@ -9,3 +9,7 @@ publish/
 .DS_Store
 build-log.txt
 setup-log.txt
+
+# Android signing keys never go in the repository
+*.keystore
+*.jks

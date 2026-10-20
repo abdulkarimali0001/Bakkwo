@@ -1,6 +1,7 @@
 using System.Reflection;
 using Avalonia.Controls;
-using Bakkwo.App.Localization;
+using Bakkwo.UI;
+using Bakkwo.UI.Localization;
 using Bakkwo.Core.Conversion;
 using Bakkwo.Core.Formats;
 
