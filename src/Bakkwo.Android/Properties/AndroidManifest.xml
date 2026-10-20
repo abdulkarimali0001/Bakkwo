@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" android:installLocation="auto">
+  <!-- No permissions: files come from the system picker or from "Share", results go out through
+       "Share" or into Download/Bakkwo (Android 10+ needs no permission for that). -->
+  <application android:label="바꿔" android:icon="@mipmap/icon" android:roundIcon="@mipmap/icon"
+               android:allowBackup="true" android:supportsRtl="true">
+    <!-- Lets other apps read a converted file when it's shared from 바꿔. -->
+    <provider android:name="androidx.core.content.FileProvider"
+              android:authorities="${applicationId}.files"
+              android:exported="false"
+              android:grantUriPermissions="true">
+      <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/file_paths" />
+    </provider>
+  </application>
+</manifest>

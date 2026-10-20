@@ -96,3 +96,26 @@ When converting video → video, `PlanSubtitles` decides per subtitle track: tex
 for the target (mov_text, WebVTT, SRT/ASS), picture tracks are copied where the container allows
 (MKV, DVB in TS), and otherwise the first picture track is burned in with an `overlay` filter.
 `tests/Pgs.cs` writes a tiny PGS file so this path is tested with real DVB subtitles.
+
+## Desktop and phone
+
+The engine (`Bakkwo.Core`) has no UI and no platform code, so the same converters run on a computer and
+on a phone. What differs is which converters are registered:
+
+| | Desktop (`Bakkwo.App`) | Phone (`Bakkwo.Mobile` + `Bakkwo.Android`) |
+| --- | --- | --- |
+| Built in | Image, ImageToPdf, Data, Text, Word, Archive | the same |
+| External programs | FFmpeg, LibreOffice (when installed) | none: apps can't start other programs |
+| Phone's own decoders | — | `HeifImageConverter` (HEIC/AVIF → JPG/PNG/WebP), `AudioExtractConverter` (video → M4A) |
+
+Because routes are planned over whatever edges exist, adding `heic → jpg` on Android is enough for the ring
+to offer HEIC → PDF, GIF, ICO and the rest (through JPG/PNG and the normal image converters).
+
+`Bakkwo.UI` holds what both screens share: the `DonutMenu` control, `FormatRing` (the suggestions, "More"
+pages and the ZIP fallback for a set of files), `Strings` and `Settings`. The phone ring is the same
+control; instead of dragging with a mouse you touch a slice, or slide your finger around the ring and let
+go on one. Results go to the app's cache and leave it through **Save** (MediaStore → Download/Bakkwo on
+Android 10+, a save dialog before that) or **Share** (a `FileProvider` link to the share sheet).
+
+`Bakkwo.Mobile` talks to Android only through `IPhonePlatform`, so an iPhone app needs a new head
+project with its own share/save code and decoders (Image I/O, AVFoundation); the screen stays the same.

@@ -1,7 +1,7 @@
 name: Release
 
 # Push a version tag to build every download and publish a GitHub Release:
-#   git tag v0.5.0 && git push origin v0.5.0
+#   git tag v0.6.0 && git push origin v0.6.0
 # (GitHub Desktop: History → right-click the commit → Create Tag…, then Push.)
 on:
   push:
@@ -109,8 +109,38 @@ jobs:
           name: linux
           path: publish/*.tar.gz
 
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Android workload
+        run: dotnet workload install android
+      - name: Build the APK
+        # The runner already has the Android SDK; .NET 8 for Android needs JDK 17.
+        # Add repository secrets BAKKWO_KEYSTORE_BASE64, BAKKWO_KEY_ALIAS and BAKKWO_KEY_PASS to sign
+        # with your own key; without them the APK is signed with a throwaway debug key.
+        env:
+          JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
+          KEYSTORE_BASE64: ${{ secrets.BAKKWO_KEYSTORE_BASE64 }}
+          BAKKWO_KEY_ALIAS: ${{ secrets.BAKKWO_KEY_ALIAS }}
+          BAKKWO_KEY_PASS: ${{ secrets.BAKKWO_KEY_PASS }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/bakkwo.keystore"
+            export BAKKWO_KEYSTORE="$RUNNER_TEMP/bakkwo.keystore"
+          fi
+          ./build/package-android.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: publish/*-android.apk
+
   release:
-    needs: [windows, macos, linux]
+    needs: [windows, macos, linux, android]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -131,6 +161,7 @@ jobs:
             | **Mac, Apple Silicon (M1–M4)** | `…-macos-arm64.zip` |
             | **Mac, Intel** | `…-macos-x64.zip` |
             | **Linux** | `…-linux-x64.tar.gz` (or `linux-arm64`), then run `./install.sh` |
+            | **Android phone** (7+) | `…-android.apk`: open it on the phone and allow installing apps from your browser/files app |
 
             For audio/video install [FFmpeg](https://ffmpeg.org); for DOC/RTF/ODT and Word → PDF install [LibreOffice](https://www.libreoffice.org).
             The Mac app isn't notarized yet: the first time, right-click it → **Open**. On Windows, SmartScreen may ask: **More info → Run anyway**.

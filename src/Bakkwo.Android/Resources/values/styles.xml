@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <color name="icon_background">#6855E8</color>
+
+  <style name="BakkwoTheme" parent="@style/Theme.AppCompat.DayNight.NoActionBar">
+    <item name="android:windowBackground">@color/splash_background</item>
+    <item name="android:statusBarColor">#6C5CE7</item>
+  </style>
+</resources>

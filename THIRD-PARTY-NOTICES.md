@@ -16,6 +16,7 @@ own license. Full license texts are available at the linked projects.
 | Markdig | BSD-2-Clause | https://github.com/xoofx/markdig |
 | YamlDotNet | MIT | https://github.com/aaubry/YamlDotNet |
 | Tmds.DBus (Linux, used by Avalonia) | MIT | https://github.com/tmds/Tmds.DBus |
+| .NET for Android, AndroidX libraries (Android app) | MIT / Apache-2.0 | https://github.com/dotnet/android |
 
 ## Programs Bakkwo can use but does not include
 
